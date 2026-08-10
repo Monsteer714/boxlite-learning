@@ -3,18 +3,58 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+/// Locate a Go binary whose GOARCH matches the host architecture.
+///
+/// On Apple Silicon (aarch64) macOS, many developer machines still have the
+/// x86_64 (Rosetta) Go installed at /usr/local/opt/go.  That Go defaults to
+/// amd64 and cannot cross-compile CGo code for arm64 — the result is an rlib
+/// full of x86_64 objects that the linker ignores.  Prefer an arm64-native Go
+/// when it exists and the host is aarch64.
+fn go_root() -> Option<&'static str> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        let native_go_root = "/opt/homebrew/opt/go/libexec";
+        if Path::new(native_go_root).is_dir() {
+            return Some(native_go_root);
+        }
+    }
+    None
+}
+
+fn find_go() -> String {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        let native_go = "/opt/homebrew/opt/go/libexec/bin/go";
+        if Path::new(native_go).is_file() {
+            println!("cargo:warning=Using arm64 Go: {native_go}");
+            return native_go.into();
+        }
+        println!("cargo:warning=arm64 Go not found at {native_go}, falling back to PATH");
+    }
+    "go".into()
+}
+
 /// Builds libgvproxy from Go sources as a C static archive.
 ///
 /// Steps:
 /// 1. Downloads Go module dependencies
 /// 2. Compiles Go code as a C archive (static library)
 fn build_gvproxy(source_dir: &Path, output_path: &Path) {
+    let go = find_go();
     println!("cargo:warning=Building libgvproxy from Go sources...");
 
+    // When an explicit GOROOT is needed (e.g. Apple Silicon with both
+    // x86_64 and arm64 Go installed, and the environment's GOROOT points
+    // at the wrong one), thread it through to every Go invocation.
+    let goroot = go_root();
+
     // Download Go dependencies
-    let download_status = Command::new("go")
-        .args(["mod", "download"])
-        .current_dir(source_dir)
+    let mut mod_cmd = Command::new(&go);
+    mod_cmd.args(["mod", "download"]).current_dir(source_dir);
+    if let Some(root) = goroot {
+        mod_cmd.env("GOROOT", root);
+    }
+    let download_status = mod_cmd
         .status()
         .expect("Failed to run 'go mod download' - ensure Go is installed");
 
@@ -23,8 +63,11 @@ fn build_gvproxy(source_dir: &Path, output_path: &Path) {
     }
 
     // Build as C archive (static library)
-    let mut build_cmd = Command::new("go");
+    let mut build_cmd = Command::new(&go);
     build_cmd.args(["build", "-buildmode=c-archive"]);
+    if let Some(root) = goroot {
+        build_cmd.env("GOROOT", root);
+    }
 
     // Use vendor directory if present
     if source_dir.join("vendor").exists() {
