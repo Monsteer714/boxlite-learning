@@ -249,6 +249,17 @@ pub fn fix_rootfs_permissions(rootfs: &Path) -> BoxliteResult<()> {
         // otherwise permanently overwrite it with a fresh 0:0 record — see
         // `OverrideStat::read_xattr`'s doc comment for why `Ok(None)` and `Err`
         // are deliberately distinct.
+        //
+        // macOS denies xattr read AND write on files without the corresponding
+        // permission bits (e.g. /etc/shadow has mode 000). Temporarily grant
+        // both read+write for the duration of the xattr operations, then restore.
+        let needs_temp = (mode & 0o600) != 0o600;
+        if needs_temp {
+            let mut temp_perms = metadata.permissions();
+            temp_perms.set_mode(mode | 0o600);
+            let _ = fs::set_permissions(path, temp_perms);
+        }
+
         let recorded = OverrideStat::read_xattr(path).map_err(|e| {
             BoxliteError::Storage(format!(
                 "Failed to read ownership xattr on {}: {}",
@@ -264,14 +275,6 @@ pub fn fix_rootfs_permissions(rootfs: &Path) -> BoxliteResult<()> {
         };
         let file_type = recorded.map_or(default_type, |s| s.file_type);
         let xattr_value = OverrideStat::new(uid, gid, mode, file_type).format();
-
-        // Temporarily add write permission if needed to set xattr
-        let needs_write = (mode & 0o200) == 0;
-        if needs_write {
-            let mut temp_perms = metadata.permissions();
-            temp_perms.set_mode(mode | 0o200); // Add owner write
-            let _ = fs::set_permissions(path, temp_perms);
-        }
 
         // Set xattr (ignore errors on special files like device nodes)
         match xattr::set(
@@ -298,7 +301,7 @@ pub fn fix_rootfs_permissions(rootfs: &Path) -> BoxliteResult<()> {
         }
 
         // Restore original permissions if we modified them
-        if needs_write {
+        if needs_temp {
             let mut orig_perms = metadata.permissions();
             orig_perms.set_mode(mode);
             let _ = fs::set_permissions(path, orig_perms);

@@ -262,6 +262,14 @@ fn dir_copy(src_dir: &Path, dst_dir: &Path, options: CopyMountOptions) -> Boxlit
     // Track directories to set mtimes later (VFS does this)
     let mut dirs_to_set_mtimes: Vec<(PathBuf, SystemTime, SystemTime)> = Vec::new();
 
+    // Track directory permissions to set after all children are populated.
+    // A directory with restrictive mode (e.g. r-xr-xr-x / 555) must not have
+    // its permissions applied until its children are fully written, otherwise
+    // subsequent file/symlink creation inside it fails with EACCES on macOS.
+    // Applied in reverse walkdir order (deepest first) so parents stay writable
+    // while their own children are still being processed.
+    let mut dirs_to_set_perms: Vec<(PathBuf, std::fs::Permissions)> = Vec::new();
+
     // Walk source directory recursively
     for entry in walkdir::WalkDir::new(src_dir)
         .follow_links(false) // Never follow symlinks!
@@ -349,6 +357,10 @@ fn dir_copy(src_dir: &Path, dst_dir: &Path, options: CopyMountOptions) -> Boxlit
                 dirs_to_set_mtimes.push((dst_path.clone(), atime, mtime));
             }
 
+            // Defer directory permission setting until after all children are
+            // written (see dirs_to_set_perms comment above).
+            dirs_to_set_perms.push((dst_path.clone(), metadata.permissions()));
+
             is_hardlink = false;
         } else if file_type.is_symlink() {
             // Symlink - preserve as-is
@@ -401,10 +413,18 @@ fn dir_copy(src_dir: &Path, dst_dir: &Path, options: CopyMountOptions) -> Boxlit
             }
         }
 
-        // Copy metadata (skip for hardlinks as they share inode)
+        // Copy metadata (skip for hardlinks as they share inode;
+        // skip directory permissions — deferred to dirs_to_set_perms below)
         if !is_hardlink {
-            copy_metadata(src_path, &dst_path, &metadata, &options)?;
+            copy_metadata(src_path, &dst_path, &metadata, &options, file_type.is_dir())?;
         }
+    }
+
+    // Set directory permissions in reverse order (deepest first, parents last).
+    // This must happen before mtime restoration so that permission changes do
+    // not update the parent's mtime after we already set it.
+    for (dir_path, perms) in dirs_to_set_perms.iter().rev() {
+        let _ = fs::set_permissions(dir_path, perms.clone());
     }
 
     // Set directory mtimes in reverse order (depth-first, parents last)
@@ -434,12 +454,17 @@ fn copy_regular_file(src: &Path, dst: &Path, _metadata: &fs::Metadata) -> Boxlit
     Ok(())
 }
 
-/// Copy metadata (permissions, ownership, timestamps, xattrs) from src to dst
+/// Copy metadata (permissions, ownership, timestamps, xattrs) from src to dst.
+///
+/// `skip_perms`: when true the permission bits are not applied here. Used for
+/// directories whose permissions are deferred until all their children have
+/// been written (see `dirs_to_set_perms` in `dir_copy`).
 fn copy_metadata(
     src: &Path,
     dst: &Path,
     metadata: &fs::Metadata,
     options: &CopyMountOptions,
+    skip_perms: bool,
 ) -> BoxliteResult<()> {
     let file_type = metadata.file_type();
 
@@ -464,8 +489,8 @@ fn copy_metadata(
         copy_xattrs(src, dst)?;
     }
 
-    // Set permissions (no LChmod for symlinks)
-    if !file_type.is_symlink() {
+    // Set permissions (no LChmod for symlinks; directories deferred by caller)
+    if !file_type.is_symlink() && !skip_perms {
         fs::set_permissions(dst, metadata.permissions()).map_err(|e| {
             BoxliteError::Storage(format!(
                 "Failed to set permissions on {}: {}",

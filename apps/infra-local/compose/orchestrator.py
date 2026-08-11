@@ -154,9 +154,16 @@ def _is_already_running_error(exc: Exception) -> bool:
 # ─── HTTP healthcheck ─────────────────────────────────────────────────────
 
 def _http_probe(url: str) -> bool:
-    """Sync HTTP probe — return True iff status 2xx. Runs in to_thread for async caller."""
+    """Sync HTTP probe — return True iff status 2xx. Runs in to_thread for async caller.
+
+    Probes always target loopback (L1 boxes + L2 native processes on the host),
+    so disable proxies here: a system HTTP_PROXY (e.g. a Clash VPN) would
+    otherwise swallow the localhost request and every healthcheck would report
+    "failed to become healthy" even when the service answers on direct curl.
+    """
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
-        with urllib.request.urlopen(url, timeout=2.0) as resp:
+        with opener.open(url, timeout=2.0) as resp:
             return 200 <= resp.status < 300
     except (urllib.error.URLError, urllib.error.HTTPError, OSError):
         return False

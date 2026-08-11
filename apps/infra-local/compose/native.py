@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import platform
 import shutil
 import signal
+import site
 import subprocess
 import sys
 import time
@@ -289,10 +291,20 @@ def start_component(p: _Paths, comp: _Component) -> bool:
     log(f"starting {comp.name}...")
     p.logs.mkdir(parents=True, exist_ok=True)
     with open(_log_file(p, comp.name), "ab") as logf:
+        # All L2 processes talk to local services (dex, postgres, redis, …) on
+        # 127.0.0.1/localhost. If the shell has HTTP_PROXY/HTTPS_PROXY set (e.g.
+        # a corporate proxy or a VPN tool like Surge), Node.js and Go route those
+        # requests through the proxy and get 502 back. Ensure localhost is always
+        # excluded unless the caller has already set NO_PROXY.
+        _NO_PROXY_LOCALS = "localhost,127.0.0.1,::1"
+        proxy_bypass: dict[str, str] = {}
+        for key in ("NO_PROXY", "no_proxy"):
+            if key not in os.environ and key not in comp.env:
+                proxy_bypass[key] = _NO_PROXY_LOCALS
         proc = subprocess.Popen(
             comp.argv,
             cwd=str(comp.cwd) if comp.cwd else None,
-            env={**os.environ, **comp.env},
+            env={**os.environ, **proxy_bypass, **comp.env},
             stdout=logf,
             stderr=subprocess.STDOUT,
             start_new_session=True,  # detach: survives our exit + own process group
@@ -362,13 +374,33 @@ def _l1_running(cfg: InfraConfig) -> bool:
 
 
 async def _ensure_l1_async(cfg: InfraConfig) -> bool:
-    """Bring the whole L1 up if postgres isn't running. True if (re)created."""
+    """Bring the whole L1 up unless every L1 box is already running. True if (re)created.
+
+    "Already running" = every non-one-shot L1 box reports state running AND
+    postgres answers psql. postgres alone is not a proxy for the stack: it can
+    be up while auxiliary boxes (pgadmin/registry-ui/otel/caddy) are missing,
+    and a postgres-only check would print "already running" and skip them — the
+    same class of bug as the presence-only check it replaced. Running the full
+    up() below is safe on a partially-up L1: start_service no-ops already
+    running boxes and only brings the missing ones up.
+    """
     orchestrator.ensure_home_env(cfg)
     infos = await orchestrator.get_runtime().list_info()
-    if any((i.name or "") == "boxlite-local-postgres" for i in infos):
+    running = {
+        i.name for i in infos
+        if (i.name or "").startswith("boxlite-local-") and (i.state.status or "") == "running"
+    }
+    expected = {f"boxlite-local-{name}" for name, spec in SERVICES.items() if not spec.one_shot}
+    if expected <= running and _pg_reachable(cfg):
         ok("L1 boxes already running")
+        # One-shot bootstrap boxes (minio-init → S3 bucket) only run during
+        # orchestrator.up, which the fast path skips. Re-run them so idempotent
+        # init still lands when L1 was left up from an earlier partial `up`.
+        one_shots = [n for n, s in SERVICES.items() if s.one_shot]
+        if one_shots:
+            await orchestrator.up(cfg, SERVICES, only=one_shots, skip_doctor=True)
         return False
-    log("L1 boxes not running — starting...")
+    log("L1 boxes not all running — starting...")
     await orchestrator.up(cfg, SERVICES)
     return True
 
@@ -425,8 +457,17 @@ def _go_build(p: _Paths, comp: str) -> None:
     # (matching the local sdks/go via go.work) instead of a downloaded
     # prebuilt — otherwise a locally-changed FFI surface fails to link.
     tags = ["-tags", "boxlite_dev"] if comp == "runner" else []
+    # Prefer arm64-native Go on Apple Silicon; the x86_64 (Rosetta) Go
+    # cannot link the arm64 libboxlite.a.
+    env = {**os.environ, "GOTOOLCHAIN": "auto"}
+    if platform.machine() == "arm64":
+        native_go_bin = "/opt/homebrew/opt/go/libexec/bin"
+        native_go_root = "/opt/homebrew/opt/go/libexec"
+        if os.path.isdir(native_go_bin):
+            env["PATH"] = f"{native_go_bin}{os.pathsep}{env.get('PATH', '')}"
+            env["GOROOT"] = native_go_root
     subprocess.run(["go", "build", *tags, "-o", str(out), f"./cmd/{comp}"],
-                   cwd=str(p.apps / comp), env={**os.environ, "GOTOOLCHAIN": "auto"}, check=True)
+                   cwd=str(p.apps / comp), env=env, check=True)
 
 
 def build(cfg: InfraConfig) -> int:
@@ -449,7 +490,25 @@ def _ensure_installed(p: _Paths) -> None:
     # boxlite must be the local source build, not the PyPI wheel. This builds it
     # once (shared cargo cache → reused across worktrees) and no-ops thereafter.
     _local_arm64.ensure_local_boxlite()
+    # Defense-in-depth: if a .pth file inside site-packages was marked hidden
+    # on macOS (UF_HIDDEN), Python ≥ 3.14 skips it and the boxlite import
+    # fails. ensure_local_boxlite already cleans up after maturin develop,
+    # but the .pth may have been hidden by something else (manual chflags,
+    # a backup tool, etc.). Unhide unconditionally — it's a one-stat call
+    # when nothing is hidden.
+    site_packages = Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+    _local_arm64._unhide_pth_files(site_packages)
     try:
+        import boxlite  # noqa: F401
+        return
+    except ImportError:
+        pass
+    # The unhide above fixed the .pth on disk, but this process computed
+    # sys.path at startup while the .pth was still hidden, so sdks/python is
+    # missing from it. Re-process site-packages to pick the (now unhidden) .pth
+    # back up and retry — this avoids pip + re-exec for the hidden-.pth case.
+    try:
+        site.addsitedir(str(site_packages))
         import boxlite  # noqa: F401
         return
     except ImportError:
@@ -567,6 +626,7 @@ def down(cfg: InfraConfig, components: list[str] | None = None, *, include_l1: b
     for name in comps:
         stop_component(p, name)
     if include_l1:
+        _ensure_installed(p)  # stopping L1 boxes talks to the boxlite SDK
         log("stopping L1 boxes...")
         asyncio.run(orchestrator.down(cfg, SERVICES))  # boxes removed; data volumes survive
     ok("stack down")
@@ -575,6 +635,11 @@ def down(cfg: InfraConfig, components: list[str] | None = None, *, include_l1: b
 
 def status(cfg: InfraConfig) -> int:
     p = _paths(cfg)
+    # status reads L1 state through the boxlite SDK, so it needs the same
+    # zero-config bootstrap as `up` — in particular the macOS hidden-.pth fix
+    # (Python ≥ 3.14 skips hidden .pth files, breaking the boxlite import).
+    # Cheap when healthy: metadata read + one stat per .pth + the import.
+    _ensure_installed(p)
     exit_code = 0
 
     print(f"{_BOLD}L1 — infra-local boxes{_RESET}")
@@ -661,6 +726,7 @@ def restart(cfg: InfraConfig, names: list[str]) -> int:
         healthy &= start_component(p, table[name])
 
     if l1:  # recreate L1 boxes inside ONE event loop (the SDK runtime is loop-bound)
+        _ensure_installed(p)  # down/up of L1 boxes talks to the boxlite SDK
         async def go() -> None:
             for box in l1:
                 log(f"recreating L1 box: boxlite-local-{box}")
@@ -685,6 +751,7 @@ def _stop_l2_and_wipe_runner(p: _Paths) -> None:
 def reset(cfg: InfraConfig, *, hard: bool = False) -> int:
     """Wipe L2 runtime state; L1 boxes stay. --hard also drops + rebuilds the schema."""
     p = _paths(cfg)
+    _ensure_installed(p)  # _l1_running below talks to the boxlite SDK
     _stop_l2_and_wipe_runner(p)
     if not _l1_running(cfg):
         warn("PG not running — skipping the DB wipe")
@@ -715,6 +782,7 @@ def reset(cfg: InfraConfig, *, hard: bool = False) -> int:
 def nuke(cfg: InfraConfig) -> int:
     """Tear down EVERYTHING: stop L2, destroy all L1 boxes, wipe data + logs."""
     p = _paths(cfg)
+    _ensure_installed(p)  # destroying L1 boxes talks to the boxlite SDK
     _stop_l2_and_wipe_runner(p)
     log("nuking everything (L1 boxes + data + logs)...")
     asyncio.run(orchestrator.down(cfg, SERVICES, wipe=True))

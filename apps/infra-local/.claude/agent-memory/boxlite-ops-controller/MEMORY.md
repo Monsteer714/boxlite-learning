@@ -1,0 +1,3 @@
+- [L1 image cache and DockerHub auth](project_l1_image_cache.md) — which images are cached; postgres+dex missing; need DOCKERHUB_USERNAME/TOKEN env vars to pull
+- [Make targets and component ports](project_make_targets.md) — all make targets, L1/L2 port map, runtime lock behavior
+- [Stale overlay tmp cleanup](project_stale_overlay_cleanup.md) — interrupted make up leaves mode-000 files; make down --all cleans them

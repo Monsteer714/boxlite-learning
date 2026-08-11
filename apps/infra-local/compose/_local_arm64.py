@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -182,6 +183,31 @@ def _boxlite_is_local_build() -> bool:
         return False
 
 
+def _unhide_pth_files(site_packages: Path) -> None:
+    """Remove UF_HIDDEN (macOS) from all .pth files in *site_packages*.
+
+    Python 3.14's ``site.addpackage`` skips hidden .pth files — when
+    maturin creates one with the macOS hidden flag, *sdks/python* never
+    enters ``sys.path`` and the boxlite import fails with no obvious
+    cause.  Call this after any step that may create or rewrite .pth
+    files inside the venv.
+    """
+    if sys.platform != "darwin":
+        return
+    if not site_packages.is_dir():
+        return
+    for pth in site_packages.glob("*.pth"):
+        try:
+            flags = pth.stat().st_flags
+        except OSError:
+            continue
+        if flags & stat.UF_HIDDEN:
+            try:
+                os.chflags(pth, flags & ~stat.UF_HIDDEN)
+            except OSError:
+                pass
+
+
 def ensure_local_boxlite() -> None:
     """Install the repo's own boxlite engine build into the running venv,
     replacing the PyPI wheel — the wheel lacks fixes the local stack needs
@@ -212,6 +238,13 @@ def ensure_local_boxlite() -> None:
         env={**os.environ, "VIRTUAL_ENV": str(venv)},
         check=True,
     )
+    # Python 3.14 added UF_HIDDEN (macOS) / FILE_ATTRIBUTE_HIDDEN (Windows)
+    # checks to site.addpackage, which skips hidden .pth files entirely.
+    # maturin develop can create .pth files with the macOS hidden flag set
+    # (observed on Apple Silicon), which makes the boxlite import fail
+    # silently — the .pth is skipped, sdks/python never enters sys.path,
+    # and the user gets "SDK not importable" with no hint.
+    _unhide_pth_files(venv / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages")
 
 
 def resolve_agent_image() -> str | None:

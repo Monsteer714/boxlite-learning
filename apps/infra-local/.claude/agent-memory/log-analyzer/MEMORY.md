@@ -1,0 +1,1 @@
+- [Log File Paths and Diagnostic Patterns](log_paths_and_patterns.md) — canonical log locations, port map, and error signatures for the local dev stack

@@ -1201,5 +1201,6 @@ Runner 是本机进程还是远端 EC2 —— 对 API 来说，Runner 就是一�
 | 8 | [`tutorial/08-proxy-routing.md`](./tutorial/08-proxy-routing.md) | Proxy 端口路由与缓存体系 | 30 分钟 |
 | 9 | [`tutorial/09-aws-deployment.md`](./tutorial/09-aws-deployment.md) | AWS SST 云端部署 | 35 分钟 |
 | 10 | [`tutorial/10-boxlite-engine.md`](./tutorial/10-boxlite-engine.md) | BoxLite Engine 内核架构 | 40 分钟 |
+| 11 | [`tutorial/11-volume.md`](./tutorial/11-volume.md) | Volume — S3 到 Box 的四层挂载链 | 40 分钟 |
 
 **阅读建议**：每课先读源文件（标注了文件路径和行号），再读讲解。代码和讲解对照学习效果最好。

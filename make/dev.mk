@@ -47,10 +47,14 @@ dev\:node: $(if $(SETUP_DONE),,runtime\:debug)
 	@cd examples/node && npm install --silent
 	@echo "✅ Node.js SDK built and linked to examples"
 
+# On Apple Silicon, prefer the arm64-native Go so CGo can link the arm64 libboxlite.a.
+GO_BIN := $(shell [ -x /opt/homebrew/opt/go/libexec/bin/go ] && echo /opt/homebrew/opt/go/libexec/bin/go || echo go)
+GOROOT_arm := $(shell [ -d /opt/homebrew/opt/go/libexec ] && echo GOROOT=/opt/homebrew/opt/go/libexec)
+
 # Build Go SDK locally (debug mode, static linking)
 dev\:go: $(if $(SETUP_DONE),,runtime\:debug)
 	@echo "🔨 Building Go SDK (debug)..."
 	@cargo build -p boxlite-c
 	@bash $(SCRIPT_DIR)/build/fix-go-symbols.sh target/debug/libboxlite.a
-	@cd sdks/go && go build -tags boxlite_dev ./...
+	@cd sdks/go && env $(GOROOT_arm) $(GO_BIN) build -tags boxlite_dev ./...
 	@echo "✅ Go SDK built. You can now run: cd sdks/go && go test -tags boxlite_dev -v ./..."
