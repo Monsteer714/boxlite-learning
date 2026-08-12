@@ -42,6 +42,10 @@ class ServiceSpec:
     cmd: Optional[list[str] | Callable[["InfraConfig"], list[str]]] = None
     entrypoint: Optional[list[str]] = None   # overrides image entrypoint (e.g. ["sh"]); None keeps image default
     working_dir: Optional[str] = None
+    # Container init user (format: <name|uid>[:<group|gid>]). None = image's
+    # configured USER. Some images run a root-owned entrypoint (they internally
+    # su-exec down); running those as their final USER breaks first boot.
+    user: Optional[str] = None
     depends_on: list[str] = field(default_factory=list)
     healthcheck: Optional[HealthCheck] = None
     one_shot: bool = False
@@ -301,6 +305,12 @@ SPEC_PGADMIN = ServiceSpec(
         "PGADMIN_LISTEN_ADDRESS": "0.0.0.0",
     },
     depends_on=["postgres"],
+    # The pgadmin entrypoint is written for root: first boot creates
+    # /var/log/pgadmin (owned by root) before dropping privileges. Boxlite runs
+    # the init as the image's final USER (pgadmin), so that mkdir hits EACCES and
+    # pgadmin aborts config-db migration (surfacing as SQLite "disk I/O error").
+    # Run the entrypoint as root; it su-execs down to pgadmin for the server.
+    user="0",
     healthcheck=HealthCheck(
         http_url="http://127.0.0.1:25051/misc/ping",
         interval_s=2.0,

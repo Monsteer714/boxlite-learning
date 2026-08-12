@@ -86,6 +86,9 @@ impl RuntimeBinaryFinder {
         // 2. Embedded runtime cache (self-contained SDK packaging)
         #[cfg(feature = "embedded-runtime")]
         if let Some(runtime) = crate::runtime::embedded::EmbeddedRuntime::get() {
+            // Re-extract if a sibling engine's stale-cache sweep removed this
+            // process' cache while it held the path (see `ensure_extracted`).
+            runtime.ensure_extracted();
             builder = builder.with_path(runtime.dir());
         }
 
@@ -230,5 +233,28 @@ mod tests {
 
         let result = finder.find("test-binary").unwrap();
         assert_eq!(result, temp_dir1.path().join("test-binary"));
+    }
+
+    /// A sibling engine's stale-cache sweep can remove this process' embedded
+    /// cache while the process is alive; the finder must re-extract rather
+    /// than keep failing against a path that no longer exists.
+    #[cfg(feature = "embedded-runtime")]
+    #[test]
+    fn find_self_heals_after_cache_is_deleted() {
+        let Some(runtime) = crate::runtime::embedded::EmbeddedRuntime::get() else {
+            eprintln!("skipping: no embedded runtime in this build");
+            return;
+        };
+        if !runtime.dir().join("mke2fs").exists() {
+            eprintln!("skipping: mke2fs not embedded in this build");
+            return;
+        }
+        std::fs::remove_dir_all(runtime.dir()).unwrap();
+        let result = find_binary("mke2fs");
+        assert!(
+            result.is_ok(),
+            "find_binary should re-extract a swept cache, got: {result:?}"
+        );
+        assert!(runtime.dir().join("mke2fs").exists());
     }
 }

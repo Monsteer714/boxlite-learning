@@ -76,6 +76,48 @@ impl EmbeddedRuntime {
         &self.dir
     }
 
+    /// Re-extract if the extracted cache vanished while this process was alive.
+    ///
+    /// [`get`](Self::get) caches the extraction result once per process, and
+    /// [`cleanup_stale`](Self::cleanup_stale) reclaims directories whose
+    /// `.complete` stamp has been idle past the disuse TTL. A long-lived engine
+    /// (e.g. the runner) holds a cached path it never refreshes, so a sibling
+    /// engine's sweep can remove that directory underneath it — after which
+    /// every binary lookup against it fails until the process restarts. Call
+    /// this before searching `dir()` so a swept cache self-heals instead of
+    /// wedging `find_binary`.
+    pub fn ensure_extracted(&self) {
+        if self.is_extracted() {
+            return;
+        }
+        tracing::warn!(
+            dir = %self.dir.display(),
+            "Embedded runtime cache missing or incomplete; re-extracting"
+        );
+        // A partially-deleted cache (files gone but the directory still there)
+        // would make extract()'s atomic rename fail against the non-empty dir;
+        // clear it so the re-extraction lands. No-op when the dir is already
+        // gone entirely.
+        let _ = std::fs::remove_dir_all(&self.dir);
+        match Self::extract() {
+            Ok(_) => tracing::info!(dir = %self.dir.display(), "Re-extracted embedded runtime"),
+            Err(e) => tracing::error!(
+                dir = %self.dir.display(),
+                "Failed to re-extract embedded runtime: {e}"
+            ),
+        }
+    }
+
+    /// The cache counts as present when the completion stamp and every
+    /// manifest entry exist. Sweeps remove whole directories, but checking each
+    /// file also covers a partial extraction or a half-deleted tree.
+    fn is_extracted(&self) -> bool {
+        if !self.dir.join(".complete").exists() {
+            return false;
+        }
+        MANIFEST.iter().all(|(name, _, _)| self.dir.join(name).exists())
+    }
+
     // ── Initialization ──────────────────────────────────────────────
 
     fn init() -> Option<Self> {
@@ -364,6 +406,29 @@ mod tests {
                     name
                 );
             }
+        }
+    }
+
+    #[test]
+    fn ensure_extracted_rebuilds_deleted_cache() {
+        if MANIFEST.is_empty() {
+            return;
+        }
+        let Some(runtime) = EmbeddedRuntime::get() else {
+            return;
+        };
+        // Simulate a sibling engine's stale-cache sweep removing this cache
+        // while this long-lived process still holds the path (OnceLock caches
+        // the dir and never refreshes the mtime cleanup_stale judges by).
+        std::fs::remove_dir_all(runtime.dir()).unwrap();
+        runtime.ensure_extracted();
+        assert!(runtime.dir().join(".complete").exists());
+        for (name, _, _) in MANIFEST {
+            assert!(
+                runtime.dir().join(name).exists(),
+                "Expected {} to be restored",
+                name
+            );
         }
     }
 }

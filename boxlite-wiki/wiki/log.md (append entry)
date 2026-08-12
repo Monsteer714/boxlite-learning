@@ -1,0 +1,4 @@
+## [2026-08-12] ingest | Local Dashboard And E2E Commands
+
+- Ingested `CLAUDE-20260812-1786500247209.md` — operational reference for the dashboard dev command matrix, same-origin `/api` proxy, Dex-based local OIDC auth, and the two E2E systems (browser vs. pytest stack).
+- Created entity pages: [[entities/dashboard]], [[entities/dex]], [[entities/e2e-pytest-suite]]; concept pages: [[concepts/same-origin-api-proxy]], [[concepts/auth-follows-api]], [[concepts/two-e2e-systems]].

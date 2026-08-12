@@ -1,0 +1,2472 @@
+[
+  {
+    "type": "confirm",
+    "title": "Fix broken link in entities/boxlite.md",
+    "description": "Broken link: [[alibaba-agentscope-runtime]] — target page not found.",
+    "affectedPages": [
+      "entities/boxlite.md"
+    ],
+    "options": [
+      {
+        "label": "Open & Edit",
+        "action": "open:entities/boxlite.md"
+      },
+      {
+        "label": "Delete Page",
+        "action": "delete:/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/wiki/entities/boxlite.md"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-1",
+    "resolved": true,
+    "createdAt": 1786498859560,
+    "resolvedAction": "open:entities/boxlite.md"
+  },
+  {
+    "type": "confirm",
+    "title": "Fix broken link in entities/boxlite.md",
+    "description": "Broken link: [[sources/architecture-2026-08-12]] — target page not found.",
+    "affectedPages": [
+      "entities/boxlite.md"
+    ],
+    "options": [
+      {
+        "label": "Open & Edit",
+        "action": "open:entities/boxlite.md"
+      },
+      {
+        "label": "Delete Page",
+        "action": "delete:/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/wiki/entities/boxlite.md"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-2",
+    "resolved": true,
+    "createdAt": 1786499439988,
+    "resolvedAction": "open:entities/boxlite.md"
+  },
+  {
+    "type": "duplicate",
+    "title": "CLAUDE-20260812-1786500247186.md vs. existing extracted sources",
+    "description": "The ingested file is a raw Claude export dated 2026-08-12 and is presumed to be the parent artifact of the six existing BoxLite source pages (key-takeaways, architecture, full README, run-command fix, SDK API, concurrent-exec deadlock). Human judgment is needed: should the export be treated as a distinct source, or marked as the origin artifact of the existing sources? Re-running analysis with the full text will reveal whether it contains unique content beyond those extractions.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247186.md",
+    "affectedPages": [
+      "wiki/sources/CLAUDE-20260812-1786500247186.md",
+      "wiki/sources/key-takeaways-2026-08-12.md",
+      "wiki/sources/architecture-2026-08-12.md",
+      "wiki/sources/boxlite-readme.md",
+      "wiki/sources/run-command-semantics-fix.md",
+      "wiki/sources/sdk-run-semantics-api.md",
+      "wiki/sources/concurrent-exec-deadlock.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-3",
+    "resolved": true,
+    "createdAt": 1786500357564,
+    "resolvedAction": "Created: wiki/queries/claude-20260812-1786500247186md-vs-existing-extrac-2026-08-12.md"
+  },
+  {
+    "type": "suggestion",
+    "title": "Re-run analysis with the full source text",
+    "description": "The analysis step received only the filename, not the document contents, so no entities or concepts were extracted and the new source page is a stub. Recommend re-submitting the full text of CLAUDE-20260812-1786500247186.md (or confirming that the six existing extracted sources fully represent it) so the wiki can be expanded accurately.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247186.md",
+    "searchQueries": [
+      "BoxLite AI agent compute substrate micro-VM",
+      "BoxLite GitHub repository OCI image sandbox",
+      "Claude conversation export agent sandbox infrastructure analysis"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-4",
+    "resolved": false,
+    "createdAt": 1786500357564
+  },
+  {
+    "type": "missing-page",
+    "title": "Source body missing from CLAUDE-20260812-1786500247090.md",
+    "description": "Only the file header was received at upload; there is no document body to analyze. No entities, concepts, or arguments could be extracted, so the source page is a placeholder. **Human action needed:** re-upload the file or paste the full Markdown content. Once available, entity/concept pages should be created and cross-linked.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247090.md",
+    "affectedPages": [
+      "wiki/sources/CLAUDE-20260812-1786500247090.md"
+    ],
+    "searchQueries": [
+      "BoxLite musl __malloc_lock fork deadlock multithreaded",
+      "BoxLite run command docker parity SDK design 2026",
+      "BoxLite agent sandbox microVM August 2026 update"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-5",
+    "resolved": false,
+    "createdAt": 1786500367736
+  },
+  {
+    "type": "duplicate",
+    "title": "CLAUDE-20260812-1786500247090.md may be the raw export behind existing sources",
+    "description": "The filename's timestamp (~2026-08-12) matches the existing sources `concurrent-exec-deadlock`, `run-command-semantics-fix`, and `sdk-run-semantics-api`. This file is likely the raw Claude conversation export behind one or more of them. Without the document body this cannot be confirmed. If confirmed, cross-link the existing source pages and update the placeholder rather than creating duplicate content.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247090.md",
+    "affectedPages": [
+      "wiki/sources/concurrent-exec-deadlock.md",
+      "wiki/sources/run-command-semantics-fix.md",
+      "wiki/sources/sdk-run-semantics-api.md",
+      "wiki/sources/CLAUDE-20260812-1786500247090.md"
+    ],
+    "searchQueries": [
+      "BoxLite concurrent exec deadlock root cause analysis",
+      "boxlite musl fork hazard hang fix",
+      "libkrun process takeover fork multithreaded boxlite"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-6",
+    "resolved": true,
+    "createdAt": 1786500367736,
+    "resolvedAction": "Created: wiki/queries/claude-20260812-1786500247090md-may-be-the-raw-exp-2026-08-12.md"
+  },
+  {
+    "type": "suggestion",
+    "title": "Verify boxlite-shared crate contents and Portal port linkage",
+    "description": "The boxlite-shared README is internally inconsistent: the Contents section documents `channel.rs` / `ChannelConfig` as present, but \"Current Status\" says the crate contains only common error types. Verify against the actual crate source before treating `ChannelConfig` as shipped. Also confirm whether `ChannelConfig::vsock(port)` feeds Portal's ports 2695/2696 or is a more general transport abstraction. Finally, the regenerated [[entities/boxlite-shared]] and [[concepts/grpc-vsock-protocol]] pages replace the existing stubs — merge rather than overwrite if the originals contain additional material beyond their index descriptions.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247201.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-shared.md",
+      "wiki/concepts/grpc-vsock-protocol.md"
+    ],
+    "searchQueries": [
+      "boxlite-shared ChannelConfig channel.rs github",
+      "BoxLite vsock 2695 2696 portal ChannelConfig connection",
+      "boxlite-shared crate CoreError rust source"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-7",
+    "resolved": false,
+    "createdAt": 1786500386167
+  },
+  {
+    "type": "contradiction",
+    "title": "SimpleBox: exec() vs Boxlite.run()",
+    "description": "The Python Quick Start uses `box.exec(\"python\", \"-c\", ...)` as the SimpleBox execution method, but the existing [[entities/simplebox|SimpleBox]] entry lists `Boxlite.run()` as the execution method. This is either an API evolution (run → exec) or two distinct entry points. Verify against the current SDK before updating the SimpleBox page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-python-20260812-1786500247131.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-8",
+    "resolved": false,
+    "createdAt": 1786500398283
+  },
+  {
+    "type": "contradiction",
+    "title": "Context-manager auto-cleanup vs Detached Boxes",
+    "description": "\"Automatically cleans up when the context exits\" appears to conflict with [[concepts/detached-boxes|Detached Boxes]] (boxes that outlive the parent process). Likely reconciled by an explicit opt-out — context-manager teardown destroys *managed* boxes, detached boxes require explicit creation — but the quickstart does not say. Decide whether to document this reconciliation on the Detached Boxes page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-python-20260812-1786500247131.md",
+    "affectedPages": [
+      "wiki/concepts/detached-boxes.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-9",
+    "resolved": false,
+    "createdAt": 1786500398283
+  },
+  {
+    "type": "contradiction",
+    "title": "pip install vs make dev:python",
+    "description": "The quickstart promises a 5-minute `pip install boxlite` setup, yet the examples require `git clone` + `make dev:python`. This implies the published PyPI package may lag the repo examples, or the examples require dev-mode builds. Worth verifying whether `pip install boxlite` supports all nine examples out of the box.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-python-20260812-1786500247131.md",
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-10",
+    "resolved": true,
+    "createdAt": 1786500398283,
+    "resolvedAction": "Created: wiki/queries/pip-install-vs-make-devpython-2026-08-12.md"
+  },
+  {
+    "type": "suggestion",
+    "title": "CodeBox positioning as the agent primitive",
+    "description": "The quickstart explicitly elevates [[entities/codebox|CodeBox]] as *the* AI code-execution API — a stronger product-level claim than the wiki's ecosystem pages (Omnigent, AgentScope, deer-flow) currently reflect. Verify whether CodeBox is the recommended agent primitive going forward, and whether the agent-story pages should be updated.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-python-20260812-1786500247131.md",
+    "affectedPages": [
+      "wiki/entities/codebox.md",
+      "wiki/entities/databricks-omnigent.md",
+      "wiki/entities/alibaba-agentscope-runtime.md"
+    ],
+    "searchQueries": [
+      "BoxLite CodeBox AI agent code execution API",
+      "BoxLite Python SDK CodeBox untrusted code isolation",
+      "BoxLite CodeBox SimpleBox difference agent sandbox"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-11",
+    "resolved": false,
+    "createdAt": 1786500398283
+  },
+  {
+    "type": "suggestion",
+    "title": "Capabilities implied by the examples catalog",
+    "description": "The quickstart's examples reference `share_across_processes` (multi-process / detached boxes), `manage_lifecycle`, and `use_native_api` (low-level Rust API access from Python) — capabilities not yet documented anywhere in the wiki. Determine whether these are stable, documented public APIs worth dedicated pages.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-python-20260812-1786500247131.md",
+    "searchQueries": [
+      "BoxLite share_across_processes Python SDK example",
+      "BoxLite native Rust API Python use_native_api",
+      "boxlite python sdk examples browser desktop automation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-12",
+    "resolved": false,
+    "createdAt": 1786500398283
+  },
+  {
+    "type": "suggestion",
+    "title": "Clarify create/exec semantics vs run-command semantics",
+    "description": "The quickstart calls `runtime.create(options, None)` then `litebox.exec(...)` without ever \"running\" the box. Does `create` start the container, or merely materialize it? What does the `None` second argument control? This is not self-evident given the wiki's emphasis on run-command semantics where the main command becomes PID 1. Worth documenting explicitly on the LiteBox page and/or run-command-semantics page, and possibly adding a query page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-rust-20260812-1786500247139.md",
+    "affectedPages": [
+      "wiki/entities/litebox.md",
+      "wiki/concepts/run-command-semantics.md"
+    ],
+    "searchQueries": [
+      "BoxLite Rust LiteBox create exec lifecycle semantics",
+      "BoxLite runtime create options None parameter meaning",
+      "boxlite OCI container start vs exec vs run PID 1"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-13",
+    "resolved": true,
+    "createdAt": 1786500415795,
+    "resolvedAction": "Created: wiki/queries/clarify-createexec-semantics-vs-run-command-semant-2026-08-12.md"
+  },
+  {
+    "type": "suggestion",
+    "title": "Clarify SimpleBox vs LiteBox sharing of BoxOptions",
+    "description": "The quickstart uses `BoxOptions` and `RootfsSpec` directly with `LiteBox`, whereas the wiki previously associated `BoxOptions` mainly with the high-level SimpleBox API. Worth confirming whether option types are shared across API layers and updating the SimpleBox/LiteBox comparison accordingly.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-rust-20260812-1786500247139.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md",
+      "wiki/entities/boxoptions.md",
+      "wiki/comparisons/litebox-vs-simplebox.md"
+    ],
+    "searchQueries": [
+      "BoxLite SimpleBox LiteBox API differences",
+      "boxlite Rust BoxOptions RootfsSpec reference",
+      "boxlite SDK layered API design Python Node Go Rust"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-14",
+    "resolved": false,
+    "createdAt": 1786500415795
+  },
+  {
+    "type": "suggestion",
+    "title": "Cross-link quickstart with run-command semantics sources",
+    "description": "The quickstart uses `exec` and never demonstrates `run IMAGE [COMMAND]`; the `run-command-semantics-fix` and `sdk-run-semantics-api` sources chronicle `run` behavior. The two are complementary — consider adding explicit cross-references between the quickstart source page and those run-semantics sources.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-rust-20260812-1786500247139.md",
+    "affectedPages": [
+      "wiki/sources/quickstart-rust-20260812-1786500247139.md",
+      "wiki/sources/run-command-semantics-fix.md",
+      "wiki/sources/sdk-run-semantics-api.md"
+    ],
+    "searchQueries": [
+      "BoxLite run command semantics docker parity SDK",
+      "boxlite run IMAGE COMMAND exec difference",
+      "boxlite Rust quickstart exec vs run documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-15",
+    "resolved": false,
+    "createdAt": 1786500415795
+  },
+  {
+    "type": "contradiction",
+    "title": "AutoResume vs Config-Gated Restart Refusal",
+    "description": "The new lifecycle feature AutoResume implies stopped boxes can be restarted, which may conflict with the wiki's existing principle that finished boxes with a main command must not implicitly restart on exec/attach/cp. The design doc content is not yet retrieved, so the contradiction is unresolved. Decide whether to create a dedicated contradiction-resolution page or defer until `architecture/auto-stop-resume-design.md` is retrieved.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247083.md",
+    "affectedPages": [
+      "wiki/concepts/auto-stop-resume-delete.md",
+      "wiki/queries/lifecycle-open-questions.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-16",
+    "resolved": false,
+    "createdAt": 1786500416860
+  },
+  {
+    "type": "contradiction",
+    "title": "AutoDelete vs Detached Boxes",
+    "description": "Auto-deletion could destroy detached boxes that a parent process or external controller still needs. Ownership/refcount semantics are unknown until the design doc is retrieved. Decide whether this tension needs its own page or can remain tracked within the lifecycle concept and query pages.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247083.md",
+    "affectedPages": [
+      "wiki/concepts/auto-stop-resume-delete.md",
+      "wiki/concepts/detached-boxes.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-17",
+    "resolved": false,
+    "createdAt": 1786500416860
+  },
+  {
+    "type": "missing-page",
+    "title": "User Guide: AutoStop、AutoResume 与 AutoDelete (guides/auto-stop-resume.md)",
+    "description": "The documentation index links a user-facing guide distinct from the architecture design doc. The wiki currently tracks only the design doc as a source page. Once the guide's content is retrieved, decide whether it deserves its own source page (the analysis notes guide and design doc are complementary sources, not duplicates).",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247083.md",
+    "searchQueries": [
+      "BoxLite AutoStop AutoResume AutoDelete user guide",
+      "BoxLite box lifecycle stop resume delete documentation",
+      "agent micro-VM idle timeout auto-stop auto-resume"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-18",
+    "resolved": false,
+    "createdAt": 1786500416860
+  },
+  {
+    "type": "suggestion",
+    "title": "Retrieve linked BoxLite documentation files and verify lifecycle semantics",
+    "description": "The README index references four files whose content is unknown: `guides/auto-stop-resume.md`, `architecture/auto-stop-resume-design.md`, `ci/e2e-local.md`, `legal/CLA.md`. The lifecycle, E2E-testing, and governance pages are currently stubs built from existence signals alone. Retrieving these files (or finding public mirrors) would resolve the open questions and let the stubs be filled in.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247083.md",
+    "affectedPages": [
+      "wiki/sources/auto-stop-resume-design.md",
+      "wiki/sources/e2e-local-ci-runbook.md"
+    ],
+    "searchQueries": [
+      "BoxLite AutoStop AutoResume AutoDelete architecture design documentation",
+      "BoxLite E2E CI runbook EC2 runner KVM micro-VM integration tests",
+      "BoxLite contributor license agreement open source governance"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-19",
+    "resolved": false,
+    "createdAt": 1786500416860
+  },
+  {
+    "type": "suggestion",
+    "title": "Update existing pages with registry-configuration details",
+    "description": "The analysis recommends reflecting the new source on existing pages that were preserved unchanged in this ingest: `boxlite-cli` (add `--config` and repeatable/prepended `--registry` flags, plus the strict fail-on-invalid-config behavior), `boxlite-runtime` and `simplebox` (document `image_registries` / `imageRegistries` options and the manual config-loading pattern), and `boxlite-run-vs-docker-run` (add a registry-precedence row comparing Docker daemon.json vs BoxLite config file + prepend flags). Worth verifying the prepend semantics against actual CLI behavior since it reverses typical \"last flag wins\" convention.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/image-registry-configuration-20260812-1786500247154.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-cli.md",
+      "wiki/entities/boxlite-runtime.md",
+      "wiki/entities/simplebox.md",
+      "wiki/comparisons/boxlite-run-vs-docker-run.md"
+    ],
+    "searchQueries": [
+      "Docker daemon.json registry mirrors precedence pull order",
+      "unqualified image reference resolution container registry fallback order",
+      "docker CLI registry flags override daemon.json behavior"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-20",
+    "resolved": false,
+    "createdAt": 1786500424275
+  },
+  {
+    "type": "suggestion",
+    "title": "Track control-plane registry auth as an open query",
+    "description": "The registry-configuration guide is silent on how registry credentials work in the multi-tenant AWS control plane (IAM-based pulls? per-tenant registry allowlists?). Consider creating a query page linking BoxLite Control Plane, secret injection, and image registry configuration to track this open question — it's the first inbound-secret scenario in the wiki.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/image-registry-configuration-20260812-1786500247154.md",
+    "searchQueries": [
+      "EKS IAM roles for service accounts container image pull",
+      "multi-tenant sandbox private registry allowlist per-tenant",
+      "ECR cross-account pull container runtime credentials"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-21",
+    "resolved": false,
+    "createdAt": 1786500424275
+  },
+  {
+    "type": "contradiction",
+    "title": "Two API surfaces: `boxlite serve` (port 8100) vs NestJS REST API (port 3000)",
+    "description": "The existing concept page [[concepts/rest-api-websocket-exec]] describes server mode as `boxlite serve` on port 8100 with `--url` CLI parity. The ingested runbook describes a NestJS REST API on port 3000 at `/api` with `GET /v1/me`, API-key/OIDC auth, and BoxliteWsProxyService. These may be the same server surface (two ports/versions), two distinct server modes, or the control-plane API vs a local embedded server. The new [[entities/rest-api-server]] page flags this as unresolved. Decide which relationship is correct and update the concept page accordingly (or add a comparison page).",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/rest-api-e2e-20260812-1786500247177.md",
+    "affectedPages": [
+      "wiki/concepts/rest-api-websocket-exec.md",
+      "wiki/entities/rest-api-server.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-22",
+    "resolved": false,
+    "createdAt": 1786500432595
+  },
+  {
+    "type": "suggestion",
+    "title": "boxlite-runner vs embedded runtime; REST image-ops gap",
+    "description": "`boxlite-runner`'s relationship to the embedded library runtime ([[entities/boxlite-runtime]]) is unspecified in the runbook — daemon, separate process, or deployable service? Separately, image operations (`pull`/`images`) are explicitly not REST-backed, which constrains control-plane multi-tenancy and remote run workflows. Look for architecture docs or a roadmap that clarify both.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/rest-api-e2e-20260812-1786500247177.md",
+    "searchQueries": [
+      "boxlite-runner BoxLite architecture daemon process",
+      "BoxLite REST API image pull images support roadmap",
+      "BoxLite control plane multi-tenant runner service deployment"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-23",
+    "resolved": false,
+    "createdAt": 1786500432595
+  },
+  {
+    "type": "suggestion",
+    "title": "Locate actual REST E2E results and the OpenAPI spec",
+    "description": "The runbook is normative (it defines how testing should be done) and contains no pass/fail data. For verification of the REST contract, look for CI results, the `target/rest-test-report/` artifacts, and the `openapi/box.openapi.yaml` spec referenced as the coverage source of truth.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/rest-api-e2e-20260812-1786500247177.md",
+    "searchQueries": [
+      "BoxLite REST API openapi box.openapi.yaml specification",
+      "BoxLite test:rest:report CI test results",
+      "boxlite REST API E2E api-key oidc attach exec test outcomes"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-24",
+    "resolved": false,
+    "createdAt": 1786500432595
+  },
+  {
+    "type": "contradiction",
+    "title": "C SDK version ambiguity (0.5.7 vs v0.2.0)",
+    "description": "The C SDK API Reference shows `boxlite_version()` returning `\"0.5.7\"` while the migration section frames the new API as \"v0.2.0\". This internal inconsistency is noted on the source page and the C SDK entity page, but the wiki needs a decision: should this become a tracked query page (e.g., `queries/c-sdk-version-ambiguity.md`) that links both version claims, or is a footnote on the entity page sufficient?\n\n\n---REVIEW: duplicate | C SDK entity vs existing SimpleBox / BoxLite Runtime / LiteBox pages---\nThe new [[entities/c-sdk|C SDK (libboxlite)]] page structurally overlaps with the SDK-agnostic [[entities/simplebox|SimpleBox]], [[entities/boxlite-runtime|BoxLite Runtime]], and [[entities/litebox|LiteBox]] pages — all C FFI details could in principle be folded into those pages. The recommended choice is to keep the C SDK as its own entity (it documents the fifth language surface with its own platform matrix and quirks), but confirm this is not creating duplicate coverage.\nOPTIONS: Create Page | Skip\n\n---REVIEW: suggestion | Cross-language SDK API comparison---\nThe C SDK is one of five language SDKs (Python/Node/Go/Rust/C). Analyzing the other four SDK docs the same way would enable a cross-SDK API-surface parity comparison and verify whether naming, ownership, and async semantics are consistent across languages.\n\nOPTIONS: Create Page | Skip\n\n---REVIEW: suggestion | macOS behavior of Linux-only capability options---\n`CAdvancedBoxOptions` capability add/drop validates \"Invalid Linux capability list\" and is inherently Linux-specific, yet the platform matrix lists macOS ARM64 as supported. The reference does not specify what happens when these options are set on macOS; worth either an open question in the wiki or investigation into the VMM/sandbox layer's capability handling on Apple Silicon.\nSEARCH: Linux capabilities macOS Hypervisor.framework virtual machine | seccomp capability handling Apple Silicon VMM | BoxLite advanced box options macOS support\nOPTIONS: Create Page | Skip",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247054.md",
+    "searchQueries": [
+      "BoxLite Python SDK API reference",
+      "BoxLite Go SDK FFI bindings agent sandbox",
+      "BoxLite Rust crate docs micro VM"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-25",
+    "resolved": false,
+    "createdAt": 1786500432656
+  },
+  {
+    "type": "suggestion",
+    "title": "Box Variant Family (CodeBox/BrowserBox/ComputerBox/InteractiveBox)",
+    "description": "The quickstart calls codebox.js/browserbox.js/computerbox.js/interactivebox.js \"examples\" but the next-steps section lists all four alongside SimpleBox as the SDK's \"Core API\". Confirm whether these are distinct SDK classes, wrappers over SimpleBox, or example recipes — this determines whether the new entity pages stand or should be folded into SimpleBox. Also verify whether the npm package @boxlite-ai/boxlite actually exports them.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-nodejs-20260812-1786500247123.md",
+    "affectedPages": [
+      "wiki/entities/codebox.md",
+      "wiki/entities/browserbox.md",
+      "wiki/entities/computerbox.md",
+      "wiki/entities/interactivebox.md"
+    ],
+    "searchQueries": [
+      "BoxLite Node.js SDK CodeBox BrowserBox ComputerBox InteractiveBox API reference",
+      "\"@boxlite-ai/boxlite\" npm package exports SimpleBox CodeBox",
+      "boxlite-ai boxlite examples node codebox browserbox computerbox interactivebox"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-26",
+    "resolved": false,
+    "createdAt": 1786500433885
+  },
+  {
+    "type": "suggestion",
+    "title": "BrowserBox/ComputerBox Runtime Architecture",
+    "description": "The quickstart does not say whether BrowserBox drives a browser inside the guest VM or a host-side browser over CDP, nor what backend ComputerBox uses for desktop automation (X11/Wayland/screenshot APIs). Both questions have security-architecture implications for the sandboxing story (display/input passthrough widens the attack surface). Worth researching the Node SDK README and any browser/display design docs.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-nodejs-20260812-1786500247123.md",
+    "affectedPages": [
+      "wiki/entities/browserbox.md",
+      "wiki/entities/computerbox.md"
+    ],
+    "searchQueries": [
+      "sandboxed browser automation microVM CDP agent architecture",
+      "BoxLite BrowserBox browser inside guest VM display passthrough",
+      "desktop automation agent sandbox X11 Wayland virtual display microVM"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-27",
+    "resolved": false,
+    "createdAt": 1786500433885
+  },
+  {
+    "type": "contradiction",
+    "title": "Security posture vs. host-loopback exposure with empty allow_net",
+    "description": "The How-to Guides state that with an empty `allow_net`, any service bound to host loopback is reachable from inside the box (via `host.boxlite.internal`), yet the default value of `allow_net` is unspecified. If empty is the default, the wiki's \"hardware-isolated\" security narrative needs qualification on the `allow-net` and `sandboxing-layers` pages. Decide whether to update existing pages or create a query page tracking this open question.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247106.md",
+    "affectedPages": [
+      "wiki/concepts/allow-net.md",
+      "wiki/concepts/sandboxing-layers.md",
+      "wiki/concepts/host-boxlite-internal.md"
+    ],
+    "searchQueries": [
+      "boxlite allow_net default configuration security",
+      "boxlite network security empty allow_net host loopback",
+      "agent sandbox network egress allowlist default policy"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-28",
+    "resolved": false,
+    "createdAt": 1786500453633
+  },
+  {
+    "type": "missing-page",
+    "title": "AutoStop / AutoResume / AutoDelete lifecycle documentation",
+    "description": "The README links to `auto-stop-resume.md` (titled in mixed Chinese) but the content is not in the source. The wiki now has a placeholder concept page. Decide whether to search for and ingest the actual lifecycle document, or skip.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247106.md",
+    "affectedPages": [
+      "wiki/concepts/lifecycle-autostop-autoresume.md"
+    ],
+    "searchQueries": [
+      "boxlite lifecycle autostop autoresume autodelete",
+      "boxlite auto stop resume delete box lifecycle management",
+      "boxlite agent box state management documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-29",
+    "resolved": false,
+    "createdAt": 1786500453633
+  },
+  {
+    "type": "suggestion",
+    "title": "Port Publication vs Network Tunnel comparison page",
+    "description": "The two networking mechanisms serve overlapping purposes with deliberately different portability properties (local-runtime TCP listeners vs. portable per-connection byte streams). A comparison page would clarify when to use which, mirroring the existing virtiofs-vs-qcow2 comparison style.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247106.md",
+    "searchQueries": [
+      "boxlite port forwarding vs tunnel sdk",
+      "boxlite network tunnel port publication comparison",
+      "microvm sandbox port forwarding tunnel API design"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-30",
+    "resolved": false,
+    "createdAt": 1786500453633
+  },
+  {
+    "type": "suggestion",
+    "title": "Metrics API consolidation and I/O monitoring gap",
+    "description": "The How-to Guides document concrete metric fields (`network_bytes_sent/received`, `cpu_time_ms`, `memory_usage_bytes`, `active_boxes`, `total_exec_calls`) not previously recorded in the wiki, and explicitly note I/O monitoring is a future feature. Consider consolidating these into the `single-rwlock-state` concept page or a dedicated metrics concept page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247106.md",
+    "affectedPages": [
+      "wiki/concepts/single-rwlock-state.md"
+    ],
+    "searchQueries": [
+      "boxlite runtime metrics api documentation network cpu memory",
+      "boxlite metrics active_boxes total_exec_calls",
+      "sandbox runtime metrics API design future features"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-31",
+    "resolved": false,
+    "createdAt": 1786500453633
+  },
+  {
+    "type": "contradiction",
+    "title": "C Simple API \"auto-start\" vs. Lazy Initialization",
+    "description": "`boxlite_simple_new` claims to \"create box and auto-start it\", which conflicts with the wiki's [[concepts/lazy-initialization|Lazy Initialization]] pattern (create() returns instantly; heavy work deferred until first use). Decision needed: document the Simple tier as intentionally eager on the lazy-init concept page, or clarify that \"auto-start\" is internal deferred readiness. This affects SimpleBox, the C SDK page, and any future Python/Node/Go/Rust binding pages.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "affectedPages": [
+      "wiki/concepts/lazy-initialization.md",
+      "wiki/entities/simplebox.md",
+      "wiki/entities/boxlite-c-sdk.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-32",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "contradiction",
+    "title": "boxlite_simple_run: exec vs. run-as-init",
+    "description": "The wiki's Run-Command Semantics (OCI Matrix) governs `boxlite run IMAGE [COMMAND...]` where COMMAND becomes PID 1. The C `boxlite_simple_run` executes a command inside an already-created/started box — the quickstart doesn't say whether this is exec-against-existing-PID-1 or run-as-init. This determines whether Config-Gated Restart Refusal applies to Simple API boxes.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "affectedPages": [
+      "wiki/concepts/run-command-semantics.md",
+      "wiki/concepts/config-gated-restart-refusal.md",
+      "wiki/entities/boxlite-c-sdk.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-33",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "duplicate",
+    "title": "C API handle types vs. existing SDK entity pages",
+    "description": "`CBoxliteSimple`, `CBoxliteRuntime`, `CBoxHandle`, `CExecutionHandle`, and `CBoxliteOptions` are documented as C analogs of SimpleBox / BoxLite Runtime / Box / LiteBox on the existing entity pages. If the C bindings grow into first-class surfaces, dedicated entity pages (or a unified \"SDK Bindings\" family) may be warranted. Decide whether the current analog-on-existing-page approach suffices.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md",
+      "wiki/entities/box.md",
+      "wiki/entities/litebox.md",
+      "wiki/entities/boxlite-c-sdk.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-34",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "missing-page",
+    "title": "C SDK API Reference",
+    "description": "The quickstart links to a full C SDK API Reference (`../reference/c/README.md`) covering the complete error-code list, memory-management rules, threading/safety, and troubleshooting — none of which is in the wiki. A dedicated page (or an extension of [[entities/boxlite-c-sdk|BoxLite C SDK]]) would capture the complete API contract.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "searchQueries": [
+      "boxlite C SDK API reference boxlite-c header",
+      "boxlite BoxliteErrorCode BoxliteCommand documentation C",
+      "github boxlite-ai boxlite sdks/c reference README"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-35",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "suggestion",
+    "title": "Mine examples/c for unmapped runtime features; plan SDK Bindings family",
+    "description": "The 8 C examples imply runtime capabilities not yet documented in the wiki: graceful shutdown with multiple boxes (shutdown.c), ID-prefix box lookup and discovery/introspection (02_list_boxes), per-box metrics (05_metrics), and error-recovery patterns (04_error_handling). Also worth deciding whether the C SDK page should be part of a broader \"SDK Bindings\" family covering Python/Node/Go/Rust surfaces.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "searchQueries": [
+      "BoxLite C SDK examples lifecycle metrics list boxes",
+      "BoxLite SDK bindings Python Node Go Rust API comparison",
+      "BoxLite agent sandbox runtime per-box metrics shutdown"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-36",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "suggestion",
+    "title": "Error-code numbering rationale (2/5/8/10)",
+    "description": "The C error codes (NotFound=2, InvalidArgument=5, Image=8, Execution=10) resemble shifted gRPC status codes (UNKNOWN=2, NOT_FOUND=5, INVALID_ARGUMENT=3) but diverge with custom codes. The scheme is non-standard and unexplained in the quickstart; verifying against the C SDK API Reference or the Rust source (`boxlite-shared` error definitions) would resolve whether this is intentional.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/quickstart-c-20260812-1786500247114.md",
+    "searchQueries": [
+      "BoxLite C SDK error codes NotFound InvalidArgument Image Execution",
+      "BoxLite BoxliteErrorCode enumeration source",
+      "BoxLite error handling design gRPC status codes"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-37",
+    "resolved": false,
+    "createdAt": 1786500462084
+  },
+  {
+    "type": "missing-page",
+    "title": "Per-SDK reference documents",
+    "description": "The BoxLite Reference Documentation links four per-SDK docs (python/README.md, nodejs/README.md, rust/README.md, c/README.md) and a CLI reference (cli/README.md) that are not inlined in the source. These likely contain material entities worth capturing as separate source pages: the Node.js BrowserBox CDP endpoint details, the 14 ComputerBox methods, the Rust type builder APIs (BoxCommand, RootfsSpec, VolumeSpec, PortSpec), and the C FFI option structs. Ingesting them would fully populate the SDK surface the current wiki only sketches.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247075.md",
+    "affectedPages": [
+      "wiki/sources/python-sdk-reference.md",
+      "wiki/sources/nodejs-sdk-reference.md",
+      "wiki/sources/rust-sdk-reference.md",
+      "wiki/sources/c-sdk-reference.md",
+      "wiki/sources/cli-reference.md"
+    ],
+    "searchQueries": [
+      "boxlite python SDK API reference documentation",
+      "boxlite nodejs SDK TypeScript BrowserBox CDP endpoint",
+      "boxlite rust crate API reference docs"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-38",
+    "resolved": false,
+    "createdAt": 1786500462447
+  },
+  {
+    "type": "suggestion",
+    "title": "Update existing pages with reference-doc detail",
+    "description": "The reference documentation adds concrete, security-relevant detail that extends several existing pages: allow-net (hostname-SNI/UDP-denial semantics, host.boxlite.internal governance, DNS/DHCP always reachable), secret-injection (placeholder format, BOXLITE_SECRET_<NAME> guest env exposure, env-vs-secrets footgun callout), sandboxing-layers (capability override dimension), boxlite-runtime (~/.boxlite home structure, BOXLITE_HOME/RUST_LOG/BOXLITE_TMPDIR), gvproxy (TCP-only NAT, local-only listeners, tunnel() handles, EXPOSE-is-metadata), boxlite-cli (subcommand surface: run, exec, list/ls/ps, cp, inspect, serve), oci-image-caching (concrete layout), and copy-on-write-qcow2-disk (lifecycle and tooling). The boxlite-run-vs-docker-run comparison should note EXPOSE-not-publishing-ports as an explicit deviation.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247075.md",
+    "affectedPages": [
+      "wiki/concepts/allow-net.md",
+      "wiki/concepts/secret-injection.md",
+      "wiki/concepts/sandboxing-layers.md",
+      "wiki/entities/boxlite-runtime.md",
+      "wiki/entities/gvproxy.md",
+      "wiki/entities/boxlite-cli.md",
+      "wiki/comparisons/boxlite-run-vs-docker-run.md"
+    ],
+    "searchQueries": [
+      "container runtime egress allowlisting TLS SNI HTTP Host UDP",
+      "sandboxed agent secret injection placeholder substitution pattern",
+      "boxlite docker run parity exposed ports metadata only"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-39",
+    "resolved": false,
+    "createdAt": 1786500462447
+  },
+  {
+    "type": "suggestion",
+    "title": "Open questions from the reference documentation",
+    "description": "Three open threads in the reference doc warrant human judgment: (a) the `~/.boxlite/init/` directory (\"shared guest rootfs\") is undocumented elsewhere — is it related to the Guest Agent or the custom-kernel RC work? (b) image-cache \"automatic garbage collection (future feature)\" — is this on a public roadmap? (c) the `UnsupportedEngine` variant (Windows, Intel Mac) makes explicit non-support decisions — should be reconciled against the README's platform matrix and verified as intentional.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247075.md",
+    "affectedPages": [
+      "wiki/queries/reference-doc-open-questions.md"
+    ],
+    "searchQueries": [
+      "boxlite init directory shared guest rootfs architecture",
+      "boxlite roadmap image cache garbage collection",
+      "boxlite supported platforms windows intel mac unsupported"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-40",
+    "resolved": false,
+    "createdAt": 1786500462447
+  },
+  {
+    "type": "contradiction",
+    "title": "REST surface ambiguity: control-plane API (:3000) vs standalone `boxlite serve` (:8100)",
+    "description": "The wiki previously documented a single REST surface at :8100 (`boxlite serve`). The E2E suite README reveals a second, distinct REST chain: `Boxlite.rest` → NestJS control-plane API (:3000) → runner (:8080), plus a `/v1/me` discovery endpoint. The concept page has been updated to disambiguate, but the relationship between the two surfaces is still thinly documented and may warrant a dedicated comparison page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247239.md",
+    "affectedPages": [
+      "wiki/concepts/rest-api-websocket-exec.md",
+      "wiki/entities/boxlite-control-plane.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-41",
+    "resolved": false,
+    "createdAt": 1786500468279
+  },
+  {
+    "type": "suggestion",
+    "title": "Repo topology of the e2e suite and control-plane stack",
+    "description": "The README says the suite \"sits under `apps/` because the stack it drives — `apps/api`, `apps/runner`, `apps/proxy` — does,\" which implies a monorepo, but it is not explicit whether this is the core BoxLite repo (containing `sdks/`, `src/boxlite/`) or a separate control-plane repository. This affects how the wiki should organize entity provenance and cross-references.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247239.md",
+    "searchQueries": [
+      "boxlite-ai github monorepo apps/api apps/runner apps/proxy",
+      "BoxLite control plane repository structure apps e2e",
+      "boxlite open source repo layout sdks src apps"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-42",
+    "resolved": false,
+    "createdAt": 1786500468279
+  },
+  {
+    "type": "suggestion",
+    "title": "OIDC auth-coverage gap in the E2E suite",
+    "description": "Under `AUTH=oidc`, the C, Go, and Node SDK entry-point cases skip entirely (drivers expose only API-key credential types); only the Python REST path runs in both auth modes. This asymmetric coverage across SDKs is an open weakness worth tracking as a query page or open question.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247239.md",
+    "searchQueries": [
+      "BoxLite Python SDK ApiKeyCredential bearer token OIDC",
+      "BoxLite C Go Node SDK auth credential types API key",
+      "boxlite OIDC SDK support github issue"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-43",
+    "resolved": false,
+    "createdAt": 1786500468279
+  },
+  {
+    "type": "contradiction",
+    "title": "\"CLI parity\" claim vs remote `-p` rejection",
+    "description": "The wiki's existing concept page [[concepts/rest-api-websocket-exec]] previously implied full CLI parity when using `--url`. The new CLI README explicitly breaks parity for port publishing: remote REST profiles reject `-p` and direct callers to `boxlite network tunnel`. I have reconciled this on the concept page by qualifying the parity claim (local OK, remote rejected). A human should confirm this reconciliation matches the intended design and decide whether a dedicated query page tracking the parity question is warranted.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247193.md",
+    "affectedPages": [
+      "wiki/concepts/rest-api-websocket-exec.md",
+      "wiki/entities/boxlite-network-tunnel.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-44",
+    "resolved": false,
+    "createdAt": 1786500474142
+  },
+  {
+    "type": "missing-page",
+    "title": "Snapshot feature implied by `snapshot:read` scope",
+    "description": "`boxlite auth whoami` output lists the scope `snapshot:read` on control-plane credentials, but no snapshot command, API endpoint, or feature is documented anywhere in the wiki or the ingested sources. This implies an undocumented snapshot capability. Decide whether to create a stub/missing page for it, or wait for a primary source.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247193.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md"
+    ],
+    "searchQueries": [
+      "boxlite snapshot feature control plane",
+      "boxlite snapshot API /v1 snapshot boxes",
+      "boxlite \"snapshot:read\" scope documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-45",
+    "resolved": false,
+    "createdAt": 1786500474142
+  },
+  {
+    "type": "suggestion",
+    "title": "Research `boxlite network tunnel` and the WSL2-vs-macOS-Intel asymmetry",
+    "description": "Two gaps could use external investigation: (1) `boxlite network tunnel` is referenced as the remote answer to `-p` but is entirely undocumented — tunnel direction, protocol, and security model are unknown; (2) the platform matrix supports WSL2 x86_64 (a VM) while explicitly excluding native macOS Intel, stated without explanation. Both are candidates for deeper research once upstream docs or issues exist.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247193.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-network-tunnel.md",
+      "wiki/entities/boxlite-cli.md"
+    ],
+    "searchQueries": [
+      "boxlite network tunnel CLI port forwarding",
+      "boxlite repository docs network tunnel command",
+      "boxlite platform support macOS Intel WSL2 issue"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-46",
+    "resolved": false,
+    "createdAt": 1786500474142
+  },
+  {
+    "type": "duplicate",
+    "title": "Platform matrix and WSL2 support may already live in the full README source page",
+    "description": "The analysis flagged that the full README source page (wiki/sources/boxlite-readme.md) may already cover the platform support matrix and Windows/WSL2 support. Before keeping the new dedicated pages, verify whether that content already exists there — if so, cross-link rather than duplicate; if not, treat the new Getting Started source as the canonical platform-reference.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247097.md",
+    "affectedPages": [
+      "wiki/concepts/platform-support-matrix.md",
+      "wiki/entities/wsl2.md",
+      "wiki/sources/boxlite-readme.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-47",
+    "resolved": false,
+    "createdAt": 1786500477923
+  },
+  {
+    "type": "suggestion",
+    "title": "Strengthen existing pages with new onboarding details",
+    "description": "The Getting Started doc is the strongest articulation of daemonless embedding so far (\"Unlike Docker, BoxLite doesn't require a daemon process...\") and it confirms the SDK version floors for BoxLite Runtime (Python 3.10+, Node 18+, Rust 1.88+, Go 1.24+CGO, C11). The existing pages couldn't be regenerated from this analysis (their original content was not in scope), so consider manually updating [[concepts/daemonless-embedding]] and [[entities/boxlite-runtime]] to incorporate these details, and adding a \"Platform Support\" section to [[entities/boxlite]].",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247097.md",
+    "affectedPages": [
+      "wiki/concepts/daemonless-embedding.md",
+      "wiki/entities/boxlite-runtime.md",
+      "wiki/entities/boxlite.md"
+    ],
+    "searchQueries": [
+      "BoxLite daemonless embeddable library Docker comparison",
+      "BoxLite SDK quickstart Python Node Rust Go version requirements",
+      "BoxLite system requirements KVM WSL2 macOS Intel unsupported"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-48",
+    "resolved": false,
+    "createdAt": 1786500477923
+  },
+  {
+    "type": "duplicate",
+    "title": "Runner may alias an existing control-plane component",
+    "description": "The AutoResume specification references \"forwarding to the runner\" as the destination of operations once a box reaches `STARTED`, but the runner is not defined anywhere in the current source set. A placeholder entity page was created; the component may instead be an alias for an existing part of the control plane or host-side execution path. Please confirm whether to keep this page or skip/merge it.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/auto-stop-resume-20260812-1786500247161.md",
+    "affectedPages": [
+      "wiki/entities/runner.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-49",
+    "resolved": false,
+    "createdAt": 1786500493429
+  },
+  {
+    "type": "contradiction",
+    "title": "STOPPED vs FINISHED reconciliation for AutoResume vs. restart refusal",
+    "description": "AutoResume implicitly restarts stopped boxes on Exec/Files/attach, which appears to contradict the existing config-gated restart refusal concept (no implicit restart for finished boxes). The wiki resolves this by adopting a `STOPPED` (AutoResume-eligible) vs `FINISHED` (restart-refused) boundary, but neither source states this explicitly. Confirm whether this reconciliation is correct or should be tracked as an open contradiction.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/auto-stop-resume-20260812-1786500247161.md",
+    "affectedPages": [
+      "wiki/concepts/config-gated-restart-refusal.md",
+      "wiki/concepts/auto-stop-resume-delete.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-50",
+    "resolved": false,
+    "createdAt": 1786500493429
+  },
+  {
+    "type": "suggestion",
+    "title": "Lifecycle edge-case behavior needs external documentation",
+    "description": "The specification leaves several API behaviors underspecified: what happens when `auto_delete <= auto_stop` is submitted, whether the idle timer resets during long-running Exec/attach sessions, and whether operations like `cp` or port-proxy activation can trigger AutoResume. Web search for upstream docs/issues could resolve these.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/auto-stop-resume-20260812-1786500247161.md",
+    "searchQueries": [
+      "BoxLite auto_stop auto_delete validation constraint",
+      "BoxLite AutoResume trigger operations cp port proxy",
+      "boxlite lifecycle sweeper idle timer implementation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-51",
+    "resolved": false,
+    "createdAt": 1786500493429
+  },
+  {
+    "type": "suggestion",
+    "title": "Cold-start latency and sweeper overhead data needed",
+    "description": "The specification is prescriptive but provides no measurements of cold-start latency, request-coalescing timeout, or sweeper overhead — all central to the cost-control value proposition. Search for benchmarks, performance comparisons, or issue-tracker discussion of cloud-runtime scaling.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/auto-stop-resume-20260812-1786500247161.md",
+    "searchQueries": [
+      "BoxLite microVM cold start latency measurement",
+      "Firecracker gVisor microVM cold start benchmark comparison",
+      "BoxLite control plane lifecycle sweeper scaling overhead"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-52",
+    "resolved": false,
+    "createdAt": 1786500493429
+  },
+  {
+    "type": "duplicate",
+    "title": "Seatbelt entity vs Jailer entity overlap",
+    "description": "The analysis recommended creating `macos-seatbelt` as a standalone entity but noted it could alternatively be folded into the existing Jailer page. I created the standalone page (with SBPL, policy file layout, dynamic assembly) and updated Jailer to cross-reference it. Confirm this split is preferred over merging Seatbelt's details directly into Jailer.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/macos-sandbox-debugging-20260812-1786500247146.md",
+    "affectedPages": [
+      "wiki/entities/macos-seatbelt.md",
+      "wiki/entities/jailer.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-53",
+    "resolved": false,
+    "createdAt": 1786500508322
+  },
+  {
+    "type": "suggestion",
+    "title": "Linux seccomp debugging guide (Jailer Linux path)",
+    "description": "The new source covers only the macOS (Seatbelt) sandbox. BoxLite's Jailer also has a Linux seccomp path with no equivalent debugging documentation in this wiki. A parallel guide would complete the Jailer story and make the seccomp-vs-Seatbelt comparison fully operational.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/macos-sandbox-debugging-20260812-1786500247146.md",
+    "searchQueries": [
+      "boxlite linux jailer seccomp policy debug deny",
+      "seccomp audit log container sandbox debugging workflow",
+      "firecracker jailer seccomp profile deny logging"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-54",
+    "resolved": false,
+    "createdAt": 1786500508322
+  },
+  {
+    "type": "suggestion",
+    "title": "Document BoxLite build/contribution workflow",
+    "description": "The source references `make dev:python` and `cargo clean -p boxlite && cargo build -p boxlite` as rebuild paths (because `.sbpl` files are embedded via `include_str!`). The wiki does not yet document BoxLite's build/contribution workflow; a dedicated page would anchor the compile-time-policy-embedding concept and help future contributors.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/macos-sandbox-debugging-20260812-1786500247146.md",
+    "searchQueries": [
+      "boxlite github repository build instructions development",
+      "boxlite make dev python SDK build",
+      "boxlite cargo workspace build contributing"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-55",
+    "resolved": false,
+    "createdAt": 1786500508322
+  },
+  {
+    "type": "suggestion",
+    "title": "Clarify optional network policy fragment mechanism",
+    "description": "The source table lists `seatbelt_network_policy.sbpl` as \"network access (optional)\" but does not explain how the fragment is made optional at runtime (compile-time feature flag? dynamic assembly condition? per-box option?). This is an open question noted on the source page; resolving it may require reading `seatbelt.rs`.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/macos-sandbox-debugging-20260812-1786500247146.md",
+    "searchQueries": [
+      "boxlite seatbelt.rs build_sandbox_policy source",
+      "boxlite network policy optional sandbox fragment",
+      "boxlite jailer sandbox network allow feature flag"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-56",
+    "resolved": false,
+    "createdAt": 1786500508322
+  },
+  {
+    "type": "suggestion",
+    "title": "Extend existing control-plane/product pages with dashboard cross-links",
+    "description": "The new dashboard source should be cross-linked from existing pages created from earlier sources. I did not modify them to avoid losing their original content. Please extend: [[entities/boxlite-control-plane]] (add that it has a web console frontend consuming its APIs via OpenAPI-generated clients, with socket.io/Svix realtime), [[entities/boxlite]] (add the dashboard to the product story), and cross-link the dashboard's terminal/Volumes features from [[concepts/pty-support]] and [[concepts/copy-on-write-qcow2-disk]]. Approve \"Create Page\" to regenerate any of them with the new cross-links, or edit manually.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247247.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/entities/boxlite.md",
+      "wiki/concepts/pty-support.md",
+      "wiki/concepts/copy-on-write-qcow2-disk.md"
+    ],
+    "searchQueries": [
+      "BoxLite control plane dashboard web console",
+      "BoxLite apps/dashboard OpenAPI api-client",
+      "BoxLite dashboard terminal PTY fullscreen"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-57",
+    "resolved": false,
+    "createdAt": 1786500509272
+  },
+  {
+    "type": "missing-page",
+    "title": "Cache Invalidation in Mutations as a dedicated concept",
+    "description": "The analysis lists \"cache invalidation in mutations\" as a key concept (one of the four non-negotiable constraints), but it currently lives only inside [[entities/boxlite-data-hooks]] and the dashboard pages. A dedicated concept page (e.g., `wiki/concepts/cache-invalidation-in-mutations.md`) could make the pattern transferable beyond BoxLite — reusing mutation hooks to inherit correct invalidation instead of re-implementing writes in components. Decide whether to create it or leave it folded into the data-hooks entity.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247247.md",
+    "affectedPages": [
+      "wiki/concepts/cache-invalidation-in-mutations.md"
+    ],
+    "searchQueries": [
+      "TanStack Query cache invalidation mutation hooks",
+      "React Query invalidateQueries best practices",
+      "cache invalidation patterns mutations server state"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-58",
+    "resolved": false,
+    "createdAt": 1786500509272
+  },
+  {
+    "type": "suggestion",
+    "title": "Verify dashboard–control-plane relationship and open questions",
+    "description": "Four open questions from the analysis need external input: (1) does the dashboard's same-origin `/api` surface correspond to the BoxLite Control Plane's public API, and which backend serves it? (2) is `apps/dashboard` open-source alongside the runtime, or a separate/internal app? (3) which transport does the fullscreen terminal use to reach the runtime's PTY support (direct vs. control-plane WebSocket)? (4) is the \"Face-Swap\" rewrite (PR #820) the source of the current visual language, and is there a design-token/Storybook artifact worth capturing? Approve \"Create Page\" to add a query page (e.g., `wiki/queries/dashboard-control-plane-relationship.md`) tracking these.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247247.md",
+    "affectedPages": [
+      "wiki/queries/dashboard-control-plane-relationship.md"
+    ],
+    "searchQueries": [
+      "BoxLite dashboard apps/dashboard github",
+      "BoxLite control plane OpenAPI api-client",
+      "BoxLite box terminal web console PTY"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-59",
+    "resolved": false,
+    "createdAt": 1786500509272
+  },
+  {
+    "type": "suggestion",
+    "title": "Update sandboxing-layers with SecurityOptions presets",
+    "description": "The analysis recommends extending the existing [[concepts/sandboxing-layers]] page with the concrete security presets and resource-limit fields (max_open_files, max_file_size, max_processes, max_memory, max_cpu_time) now documented in the integration guide. The existing page was preserved unchanged; decide whether to regenerate it with this operational layer added.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/ai-agent-integration-20260812-1786500247170.md",
+    "affectedPages": [
+      "wiki/concepts/sandboxing-layers.md"
+    ],
+    "searchQueries": [
+      "BoxLite SecurityOptions sandboxing layers presets",
+      "AI agent sandbox seccomp resource limits best practices",
+      "micro-VM defense in depth untrusted code execution"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-60",
+    "resolved": false,
+    "createdAt": 1786500510739
+  },
+  {
+    "type": "suggestion",
+    "title": "Update pty-support with resize_tty behavior",
+    "description": "The analysis recommends adding `resize_tty(rows, cols)` behavior to [[concepts/pty-support]]: TTY-only (returns an error on non-TTY executions), prevents garbled output from line wrapping, and enables interactive dimension management for agent-controlled shells.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/ai-agent-integration-20260812-1786500247170.md",
+    "affectedPages": [
+      "wiki/concepts/pty-support.md"
+    ],
+    "searchQueries": [
+      "BoxLite resize_tty PTY execution API",
+      "AI agent interactive terminal resize TTY best practices",
+      "pseudo-terminal dimension handling agent sandbox"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-61",
+    "resolved": false,
+    "createdAt": 1786500510739
+  },
+  {
+    "type": "contradiction",
+    "title": "network_enabled macOS-only caveat vs allow_net egress control",
+    "description": "The integration guide's \"strict isolation\" recipe (`network_enabled=False`) is macOS-only in the Python bindings; on Linux, isolation comes from runtime/container networking config and \"may not itself hard-disable all outbound connectivity.\" This clashes with the cross-platform implication of the existing [[concepts/allow-net]] egress allow-listing concept. Decide whether to note the discrepancy on the allow-net page or create a query page tracking the Linux network-isolation mechanism.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/ai-agent-integration-20260812-1786500247170.md",
+    "affectedPages": [
+      "wiki/concepts/allow-net.md",
+      "wiki/concepts/security-options-presets.md"
+    ],
+    "searchQueries": [
+      "BoxLite network_enabled macOS Linux networking isolation",
+      "AI agent sandbox network disable egress Linux",
+      "micro-VM outbound network filtering agent workloads"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-62",
+    "resolved": false,
+    "createdAt": 1786500510739
+  },
+  {
+    "type": "suggestion",
+    "title": "Update SimpleBox/LiteBox execution capability surface",
+    "description": "The analysis recommends adding `kill()`, `resize_tty()`, and `copy_in`/`copy_out` to the documented execution capability surface of the SimpleBox/LiteBox entity pages, since the integration guide is the first source to formally document these methods.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/ai-agent-integration-20260812-1786500247170.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md",
+      "wiki/entities/litebox.md"
+    ],
+    "searchQueries": [
+      "BoxLite Python SDK exec kill resize_tty copy_in copy_out API",
+      "boxlite SimpleBox LiteBox method reference",
+      "BoxLite SDK execution methods documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-63",
+    "resolved": false,
+    "createdAt": 1786500510739
+  },
+  {
+    "type": "missing-page",
+    "title": "BoxOptions configuration entity",
+    "description": "`BoxOptions` is the central configuration surface in the integration guide (image, cpus, memory_mib, working_dir, volumes, security) but has no dedicated page — it is only referenced via the SimpleBox entity. Create a dedicated entity page or skip.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/ai-agent-integration-20260812-1786500247170.md",
+    "searchQueries": [
+      "BoxLite BoxOptions API reference configuration fields",
+      "boxlite Python SDK BoxOptions cpus memory volumes security",
+      "BoxLite configuration reference documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-64",
+    "resolved": false,
+    "createdAt": 1786500510739
+  },
+  {
+    "type": "contradiction",
+    "title": "SimpleBox API surface mismatch between wiki entity and SDK API reference",
+    "description": "The existing [[entities/simplebox|SimpleBox]] page describes `BoxOptions`, `attach()`, `wait()`, and `Boxlite.run()`. README-20260812-1786500247068.md documents `getId()`, `getInfo()`, `exec()` (variadic + array forms), `stop()`, and `[Symbol.asyncDispose]` — no `attach()`/`wait()`/`Boxlite.run()`. Either the API was redesigned after the earlier wiki source, the wiki describes a different SDK layer/version, or the reference is incomplete. This needs reconciliation before the SimpleBox entity page can be trusted.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247068.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md",
+      "wiki/sources/README-20260812-1786500247068.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-65",
+    "resolved": false,
+    "createdAt": 1786500512286
+  },
+  {
+    "type": "contradiction",
+    "title": "SDK-level run() with docker parity absent from API reference",
+    "description": "The wiki's [[sources/sdk-run-semantics-api|SDK Run-Command Semantics (API Design)]] source describes exposing docker-style `run()` through the SDKs, but the Node.js API reference shows no `run()` on `JsBoxlite` or `SimpleBox`. The method may have been omitted from this document, dropped, or moved elsewhere (e.g., reserved for a different SDK language). Worth a query page to track whether docker-parity `run()` is still part of the SDK contract.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247068.md",
+    "affectedPages": [
+      "wiki/sources/sdk-run-semantics-api.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-66",
+    "resolved": false,
+    "createdAt": 1786500512286
+  },
+  {
+    "type": "suggestion",
+    "title": "Specialized-box packaging and security posture",
+    "description": "`BrowserBox` (CDP ports 9222–9224) and `ComputerBox` (GUI ports 3000/3001) are documented as first-class exports, but the reference does not say whether they ship in the core SDK package or as add-ons, nor whether their ports inherit the local-runtime-only restriction of port publication. Both use third-party images (Playwright, browserless, python:slim) — a supply-chain surface worth investigating. Consider a query page on specialized-box packaging and port-exposure security.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247068.md",
+    "searchQueries": [
+      "BoxLite Node.js SDK BrowserBox ComputerBox package exports",
+      "BoxLite security implications GUI CDP port exposure sandbox",
+      "BoxLite specialized boxes playwright browserless supply chain"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-67",
+    "resolved": false,
+    "createdAt": 1786500512286
+  },
+  {
+    "type": "contradiction",
+    "title": "`ps` \"active\" state includes stopped boxes?",
+    "description": "The CLI Reference's `run` section says \"boxlite ps shows it stopped\" after a foreground run exits, but `list` documents `--all` as needed to \"Show all boxes (default: only active)\". Either \"active\" includes stopped-but-not-removed boxes (plausible, but breaks docker-parity) or the `run` claim is wrong. Needs a human decision: create a query page tracking the ambiguity, or annotate the source page as-is.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247061.md",
+    "affectedPages": [
+      "wiki/sources/README-20260812-1786500247061.md",
+      "wiki/entities/boxlite-cli.md",
+      "wiki/comparisons/boxlite-run-vs-docker-run.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-68",
+    "resolved": false,
+    "createdAt": 1786500514648
+  },
+  {
+    "type": "duplicate",
+    "title": "\"BoxLite Cloud\" vs BoxLite Control Plane + BoxLite Auth",
+    "description": "The new auth/`--url`/`network tunnel` surface could justify a dedicated \"BoxLite Cloud\" entity page, or remain folded under [[entities/boxlite-control-plane|BoxLite Control Plane]] plus [[entities/boxlite-auth|BoxLite Auth]]. Current pages assume the latter; a human should decide whether the cloud mode deserves its own entity.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247061.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/entities/boxlite-auth.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-69",
+    "resolved": false,
+    "createdAt": 1786500514648
+  },
+  {
+    "type": "suggestion",
+    "title": "Anonymous-volume temp-dir fallback is a potential footgun",
+    "description": "The anonymous-volume base resolves `--home` > `$BOXLITE_HOME` > `~/.boxlite` > system temp. Falling back to a temp dir silently places volumes in ephemeral storage (data loss risk on reboot). Intended behavior or bug? Consider a query page or a warning annotation on the concept page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247061.md",
+    "affectedPages": [
+      "wiki/concepts/anonymous-volumes.md"
+    ],
+    "searchQueries": [
+      "boxlite anonymous volume temp directory behavior",
+      "BOXLITE_HOME default location boxlite volumes documentation",
+      "boxlite CLI volume mount storage location"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-70",
+    "resolved": false,
+    "createdAt": 1786500514648
+  },
+  {
+    "type": "suggestion",
+    "title": "`inspect --format` uses the `gtmpl` engine, not Go `text/template`",
+    "description": "The CLI Reference documents a `json` template function but the engine is `gtmpl` — docker users expecting Go's `{{json .}}` semantics may be surprised. Also worth flagging: `--registry` silently no-ops under `--url`. Consider a dedicated note or page on output-format semantics.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247061.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-cli.md"
+    ],
+    "searchQueries": [
+      "gtmpl go template engine boxlite inspect",
+      "boxlite inspect format json template documentation",
+      "boxlite --url remote mode registry config ignored"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-71",
+    "resolved": false,
+    "createdAt": 1786500514648
+  },
+  {
+    "type": "contradiction",
+    "title": "Memory default discrepancy (512 vs 2048 MiB)",
+    "description": "The Python SDK API Reference documents `BoxOptions.memory_mib` default as 512 MiB in the field table but declares `DEFAULT_MEMORY_MIB = 2048` in the Constants section; `SimpleBox` says \"System default\" without resolving either. This must be verified against the shipped SDK or the main README, and the resolved value propagated to the Box entity and the source page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/queries/memory-default-contradiction.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-72",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "contradiction",
+    "title": "ExecError vs ExecResult semantics",
+    "description": "The source says `ExecError` is raised on non-zero exit (example: `await box.exec(\"false\")`), yet `Box.exec()` is documented as returning an `Execution` whose `wait()` yields `ExecResult.exit_code` — implying low-level exec returns rather than raises. Either the error-docs example is sloppy or low-level exec does raise. Needs clarification against the shipped SDK before the Execution and Error Types pages can be considered accurate.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/queries/exec-error-vs-execresult.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-73",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "contradiction",
+    "title": "SimpleBox surface mismatch with wiki index",
+    "description": "The existing index describes SimpleBox as exposing `BoxOptions`, `attach()`, `wait()`, and `Boxlite.run()`; the Python SDK reference shows `start()/exec()/info()/shutdown()`. Likely different SDK-language surfaces, but the wiki currently treats SimpleBox as uniform. Decide whether the SimpleBox page should gain a per-SDK breakdown or whether one surface description is simply wrong.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/entities/simplebox.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-74",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "suggestion",
+    "title": "SDK TimeoutError shadows Python builtin",
+    "description": "`boxlite.TimeoutError` is a BoxLite exception that shadows Python's builtin `TimeoutError` — a real footgun for users catching timeouts. The error-types page documents it, but consider whether a formal warning box and/or a dedicated query page tracking the issue is warranted.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-error-types.md"
+    ],
+    "searchQueries": [
+      "python SDK TimeoutError shadowing builtin exception",
+      "boxlite TimeoutError exception hierarchy python",
+      "greenlet sync api timeout error builtin name collision"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-75",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "suggestion",
+    "title": "BoxStateInfo enum drift vs lifecycle concepts",
+    "description": "`BoxStateInfo` values (Created, Starting, Running, Stopping, Stopped, Failed) may conflict with the lifecycle states implied by the exit-record and config-gated-restart-refusal concepts (e.g., a \"Finished\" notion for boxes with a main command). Verify the enum against the runtime's lifecycle implementation to decide whether a reconciliation query page is needed.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/queries/boxstateinfo-lifecycle-drift.md"
+    ],
+    "searchQueries": [
+      "boxlite BoxStateInfo lifecycle state machine",
+      "boxlite exit record state stopped failed",
+      "container runtime lifecycle state machine stopped exited states"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-76",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "suggestion",
+    "title": "Cross-link specialized boxes to ecosystem adopters",
+    "description": "The box-type taxonomy (especially CodeBox) is the most likely surface consumed by Databricks Omnigent, Alibaba AgentScope Runtime, and ByteDance deer-flow. Linking the specialized-box entity pages into the adopter entity pages would make the adoption claims more concrete and testable.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/entities/databricks-omnigent.md",
+      "wiki/entities/alibaba-agentscope-runtime.md",
+      "wiki/entities/bytedance-deer-flow.md"
+    ],
+    "searchQueries": [
+      "databricks omnigent boxlite sandbox",
+      "alibaba agentscope runtime boxlite CONTAINER_DEPLOYMENT",
+      "bytedance deer-flow boxlite agent sandbox provider"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-77",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "suggestion",
+    "title": "Update existing concept pages with newly anchored SDK details",
+    "description": "The Python SDK reference grounds several concepts that previously had only architectural definitions: `allow_net` now maps to `NetworkSpec` with `mode=\"disabled\"` removing the guest NIC entirely; Secret Injection has the concrete placeholder format `<BOXLITE_SECRET:name>`; PTY Support gains InteractiveBox + TTY tri-state; Lazy Initialization gains the `published_ports is None` reattach caveat. Decide whether to fold these details into the existing concept pages.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247030.md",
+    "affectedPages": [
+      "wiki/concepts/allow-net.md",
+      "wiki/concepts/secret-injection.md",
+      "wiki/concepts/pty-support.md",
+      "wiki/concepts/lazy-initialization.md"
+    ],
+    "searchQueries": [
+      "boxlite NetworkSpec mode disabled guest NIC",
+      "boxlite secret injection placeholder BOXLITE_SECRET",
+      "boxlite InteractiveBox tty sys.stdin.isatty autodetect"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-78",
+    "resolved": false,
+    "createdAt": 1786500520765
+  },
+  {
+    "type": "suggestion",
+    "title": "Dashboard–Control-Plane relationship needs confirmation",
+    "description": "The new dashboard entity raises but cannot answer whether the dashboard is the UI for the BoxLite Control Plane or a separate product surface. This affects where the dashboard belongs in the wiki's platform taxonomy and what the dev/local/prod API targets imply about control-plane deployments. Recommend a web search for BoxLite platform/product documentation.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247209.md",
+    "affectedPages": [
+      "wiki/entities/dashboard.md",
+      "wiki/entities/boxlite-control-plane.md"
+    ],
+    "searchQueries": [
+      "BoxLite dashboard control plane UI relationship",
+      "BoxLite platform architecture dashboard apps",
+      "boxlite control plane AWS multi-tenant dashboard"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-79",
+    "resolved": false,
+    "createdAt": 1786500522290
+  },
+  {
+    "type": "missing-page",
+    "title": "BoxLite API environments (dev/local/prod)",
+    "description": "The source's command matrix treats dev/local/prod APIs as load-bearing environments and notes prod is \"unconfigured until the prod stage exists.\" These environments are referenced but have no dedicated wiki page; the control-plane entity documents deployable AWS infrastructure but not environment staging. Decide whether to document the API environments as an entity or fold them into the control-plane page.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247209.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/entities/dashboard.md",
+      "wiki/sources/CLAUDE-20260812-1786500247209.md"
+    ],
+    "searchQueries": [
+      "BoxLite control plane AWS deployment environments dev local prod",
+      "boxlite API server stage configuration",
+      "boxlite production deployment stage roadmap"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-80",
+    "resolved": false,
+    "createdAt": 1786500522290
+  },
+  {
+    "type": "suggestion",
+    "title": "Identity of the \"API\" layer in the stack-E2E chain",
+    "description": "The e2e stack suite chain (SDK/CLI → API → runner → microVM) presumably uses `boxlite serve` (REST API / WebSocket exec, port 8100) as the API layer, but the source does not say so. Resolving this would tighten the link between the e2e-pytest-suite entity and the rest-api-websocket-exec concept, and would justify ingesting `apps/e2e/README.md` as a follow-up source.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/CLAUDE-20260812-1786500247209.md",
+    "affectedPages": [
+      "wiki/entities/e2e-pytest-suite.md",
+      "wiki/concepts/rest-api-websocket-exec.md"
+    ],
+    "searchQueries": [
+      "BoxLite apps e2e pytest README SDK CLI API runner microVM",
+      "boxlite serve REST API WebSocket exec port 8100",
+      "BoxLite e2e stack suite API layer documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-81",
+    "resolved": false,
+    "createdAt": 1786500522290
+  },
+  {
+    "type": "contradiction",
+    "title": "Two server modes: `boxlite serve` vs Go runner",
+    "description": "The wiki's existing [[concepts/rest-api-websocket-exec]] page was built around the Rust `boxlite serve` server (:8100), but the new runner README describes a production Go server (:3003) with the same REST/WS surface plus v2 job execution. I regenerated the concept page to cover both servers and added [[comparisons/runner-vs-boxlite-serve]]. The regenerated page was reconstructed from its index description — verify no original content was lost in the merge, and confirm the production-vs-dev relationship stated in the README.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247216.md",
+    "affectedPages": [
+      "wiki/concepts/rest-api-websocket-exec.md",
+      "wiki/comparisons/runner-vs-boxlite-serve.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-82",
+    "resolved": false,
+    "createdAt": 1786500548273
+  },
+  {
+    "type": "duplicate",
+    "title": "NestJS API Service vs BoxLite Control Plane",
+    "description": "The source analysis suggested the NestJS API could be folded into the existing [[entities/boxlite-control-plane]] entity. I created a separate `entities/nestjs-api` page that cross-references the control plane. Decide whether to keep the separate page or fold its content into the control plane entity.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247216.md",
+    "affectedPages": [
+      "wiki/entities/nestjs-api.md",
+      "wiki/entities/boxlite-control-plane.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-83",
+    "resolved": false,
+    "createdAt": 1786500548273
+  },
+  {
+    "type": "suggestion",
+    "title": "Verify wire-protocol identity and the production/dev deployment model",
+    "description": "Two open questions from the new source: (1) does the Go runner's REST/WS surface *replace* `boxlite serve` in production, or are both deployed? (2) is the runner's `/attach` WS protocol the same contract implemented by the Rust SDK's `connect_ws` / `attach_ws_pump`? Worth confirming against the OpenAPI spec and the SDK sources cited in the README.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247216.md",
+    "affectedPages": [
+      "wiki/concepts/attach-wire-protocol.md",
+      "wiki/comparisons/runner-vs-boxlite-serve.md"
+    ],
+    "searchQueries": [
+      "BoxLite runner boxlite serve production vs dev deployment",
+      "BoxLite attach WebSocket protocol litebox.rs connect_ws attach_ws_pump",
+      "BoxLite openapi box.openapi.yaml execution attach schema"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-84",
+    "resolved": false,
+    "createdAt": 1786500548273
+  },
+  {
+    "type": "suggestion",
+    "title": "E2B comparison and benchmark data",
+    "description": "The runner README states detach-without-kill \"matches the E2B model.\" A comparison page against E2B's execution model, plus locating boot-time / memory-overhead benchmarks, would help verify the README's performance positioning claims and the wiki's micro-VM thesis.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247216.md",
+    "affectedPages": [
+      "wiki/concepts/detached-boxes.md",
+      "wiki/concepts/exec-reaping-policy.md"
+    ],
+    "searchQueries": [
+      "E2B sandbox execution model detach reattach idle timeout",
+      "Firecracker microVM boot time memory overhead benchmark AI agents",
+      "BoxLite microVM performance benchmark boot latency density"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-85",
+    "resolved": false,
+    "createdAt": 1786500548273
+  },
+  {
+    "type": "duplicate",
+    "title": "Naming collision: control-plane \"Api\" entity vs \"REST API / WebSocket Exec\" concept",
+    "description": "The new [[entities/boxlite-api|BoxLite API]] (NestJS control-plane service, port 3000, `api.<STACK_DOMAIN>`) may be confused with the existing [[concepts/rest-api-websocket-exec|REST API / WebSocket Exec]] concept (server-mode `boxlite serve`, port 8100, for embedded/local deployments). These are two distinct surfaces — the server-side multi-tenant control plane vs. the local embedded server. A disambiguation note or a comparison page may be warranted.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247224.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-api.md",
+      "wiki/concepts/rest-api-websocket-exec.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-86",
+    "resolved": false,
+    "createdAt": 1786500554080
+  },
+  {
+    "type": "suggestion",
+    "title": "Verify whether external adopters use this same control-plane stack",
+    "description": "The runbook describes `apps/infra` as \"the BoxLite control plane.\" The wiki's ecosystem adopters (Databricks Omnigent, Alibaba AgentScope, ByteDance deer-flow) reference BoxLite as a sandbox, but it is unverified whether they deploy this SST-on-AWS stack, use the embedded runtime, or self-host. Web-searching for adoption details would strengthen the ecosystem evidence.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247224.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/queries/control-plane-open-questions.md"
+    ],
+    "searchQueries": [
+      "BoxLite Databricks Omnigent sandbox integration",
+      "BoxLite AgentScope CONTAINER_DEPLOYMENT boxlite",
+      "BoxLite ByteDance deer-flow sandbox provider microVM"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-87",
+    "resolved": false,
+    "createdAt": 1786500554080
+  },
+  {
+    "type": "suggestion",
+    "title": "Control-plane cost and scale targets (~$600/month always-on)",
+    "description": "The ~$600/month always-on footprint (EC2 Runner ~$325, load balancers ~$135) sits in tension with the project's embedded-first, open-source README framing, and the runbook leaves the target deployment profile (single-tenant per customer vs shared multi-tenant) unstated. Benchmarking comparable agent-sandbox control planes would contextualize whether this cost is typical.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247224.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/queries/control-plane-open-questions.md"
+    ],
+    "searchQueries": [
+      "E2B sandbox infrastructure cost per agent session",
+      "microVM agent sandbox control plane cost benchmark",
+      "Firecracker microVM multi-tenant agent runtime pricing 2026"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-88",
+    "resolved": false,
+    "createdAt": 1786500554080
+  },
+  {
+    "type": "suggestion",
+    "title": "Identify the service on the runner's :3003 (missing traffic flow)",
+    "description": "The network-model source pins the runner's SG to `:3003` from the VPC CIDR only, but its traffic-flow table never lists Api/Proxy → runner explicitly. Verify what service the runner exposes on `:3003` (presumably a box-orchestration/agent API) and over what protocol — this is likely a separate, currently undocumented component of the control plane.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/NETWORKING-20260812-1786500247231.md",
+    "affectedPages": [
+      "wiki/sources/NETWORKING-20260812-1786500247231.md",
+      "wiki/entities/boxlite-control-plane.md"
+    ],
+    "searchQueries": [
+      "BoxLite runner API port 3003 orchestration",
+      "BoxLite EC2 runner agent control plane",
+      "boxlite micro-VM orchestrator HTTP API documentation"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-89",
+    "resolved": false,
+    "createdAt": 1786500556082
+  },
+  {
+    "type": "suggestion",
+    "title": "Verify fck-nat auto-recovery and the $16/mo cost scope",
+    "description": "The per-AZ HA story for the fck-nat instances depends on instance health; the source doesn't mention CloudWatch auto-recovery, and the ~$16/mo figure appears to itemize NATs only (not the runner's public IPv4/EBS). Check `sst.config.ts` §10 to confirm auto-recovery configuration, Elastic IP usage, and the true cost scope.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/NETWORKING-20260812-1786500247231.md",
+    "affectedPages": [
+      "wiki/entities/boxlite-control-plane.md",
+      "wiki/sources/NETWORKING-20260812-1786500247231.md"
+    ],
+    "searchQueries": [
+      "fck-nat CloudWatch alarm auto recovery",
+      "AWS NAT instance high availability single point of failure",
+      "managed NAT gateway vs NAT instance cost comparison 2026"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-90",
+    "resolved": false,
+    "createdAt": 1786500556082
+  },
+  {
+    "type": "suggestion",
+    "title": "Survey egress-only public IP / fail-open patterns across other agent-sandbox platforms",
+    "description": "The egress-only public IP + stateful-SG pattern and the fail-closed/fail-open dichotomy could be reusable design patterns across agent-compute platforms (E2B, Modal, Firecracker-based sandboxes). Compare the BoxLite control-plane network design with other sandbox providers' egress architectures to determine whether this is a common or distinctive approach.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/NETWORKING-20260812-1786500247231.md",
+    "affectedPages": [
+      "wiki/concepts/egress-only-public-ip.md",
+      "wiki/concepts/fail-closed-vs-fail-open.md"
+    ],
+    "searchQueries": [
+      "microVM sandbox egress control AWS security group",
+      "Firecracker microVM network egress architecture",
+      "agent sandbox provider VPC network design E2B Modal"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-91",
+    "resolved": false,
+    "createdAt": 1786500556082
+  },
+  {
+    "type": "contradiction",
+    "title": "Exit-code convention: 128+n vs negative signal",
+    "description": "The Rust API reference (README-20260812-1786500247042.md) documents `ExecResult.exit_code` as \"0 = success, negative = signal number\" (e.g., SIGKILL = −9), which contradicts the existing [[concepts/exit-record|Exit Record]] page's `128+n` convention. A query page (wiki/queries/exit-code-convention.md) has been created to track the discrepancy, and both conventions are documented in the Execution entity page. Human judgment is needed on which convention is canonical (or whether exit.json and the Execution API genuinely diverge for different consumers).",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247042.md",
+    "affectedPages": [
+      "wiki/concepts/exit-record.md",
+      "wiki/entities/execution.md",
+      "wiki/queries/exit-code-convention.md"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-92",
+    "resolved": false,
+    "createdAt": 1786500579296
+  },
+  {
+    "type": "suggestion",
+    "title": "auto_remove default vs persistent-box narrative",
+    "description": "`BoxOptions.auto_remove` defaults to `true` (box removed on stop unless opted out), while the wiki's QCOW2 persistence story emphasizes \"state across agent turns.\" With `detach: true` the box outlives its parent — so who removes a detached box when its parent exits, and is removal tied to VM stop regardless of who stops it? The Box Lifecycle page documents the tension, but the persistence/teardown story needs a human decision.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247042.md",
+    "searchQueries": [
+      "BoxLite auto_remove detached box lifecycle",
+      "microVM agent sandbox persistence teardown semantics",
+      "boxlite box restart across agent turns state persistence"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-93",
+    "resolved": false,
+    "createdAt": 1786500579296
+  },
+  {
+    "type": "suggestion",
+    "title": "SimpleBox vs Rust BoxOptions relationship",
+    "description": "The wiki currently treats SimpleBox's `BoxOptions` as the high-level SDK API surface, but the Rust API reference presents `BoxOptions` (with rootfs, volumes, network, secrets, ports, detach, auto_remove, advanced) as the canonical configuration surface. Are SimpleBox's BoxOptions a wrapper over this same Rust surface, or a different abstraction layer? Entity taxonomy may need consolidation between [[entities/simplebox|SimpleBox]] and [[entities/box-options|BoxOptions]].",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247042.md",
+    "searchQueries": [
+      "boxlite simplebox BoxOptions SDK wrapper python",
+      "boxlite python sdk abstraction runtime architecture",
+      "boxlite sdk layered API design rust core"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-94",
+    "resolved": false,
+    "createdAt": 1786500579296
+  },
+  {
+    "type": "suggestion",
+    "title": "ULID→Base62 BoxID migration status",
+    "description": "`BoxID` is now 12-char Base62 (~71-bit entropy) with legacy 26-char ULID acceptance, but `BoxInfo.id`'s doc comment still says \"ULID\" — the docs are mid-migration. Confirm whether the Base62 format is stable or still transitioning; the BoxID entity page records both formats.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247042.md",
+    "searchQueries": [
+      "boxlite changelog BoxID format base62",
+      "boxlite identifier migration ulid base62",
+      "boxlite BoxID validation parse 12 character"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-95",
+    "resolved": false,
+    "createdAt": 1786500579296
+  },
+  {
+    "type": "suggestion",
+    "title": "Merge Rust API reference facts into existing pages",
+    "description": "The analysis recommends updating existing pages with authoritative Rust SDK details: LiteBox (full method surface), BoxLite Runtime (BoxliteRuntime API), allow_net (UDP-denial caveat, Disabled mode), Secret Injection (placeholder format, hosts scoping), Exit Record (convention conflict), Lazy Initialization (stale-metadata/reattach), Sandboxing Layers (SecurityOptions mapping), Run-Command Semantics (BoxCommand relationship). These merges require the current page contents; the new facts are documented in the new entity/concept pages and the source summary for cross-referencing.",
+    "sourcePath": "/Users/monsteer/Desktop/codes/boxlite-learning/boxlite-wiki/raw/sources/README-20260812-1786500247042.md",
+    "searchQueries": [
+      "boxlite litebox rust sdk methods lifecycle reference",
+      "boxlite allow_net udp egress hostname SNI",
+      "boxlite secret placeholder BOXLITE_SECRET hosts scoping"
+    ],
+    "options": [
+      {
+        "label": "Create Page",
+        "action": "Create Page"
+      },
+      {
+        "label": "Skip",
+        "action": "Skip"
+      }
+    ],
+    "id": "review-96",
+    "resolved": false,
+    "createdAt": 1786500579296
+  }
+]

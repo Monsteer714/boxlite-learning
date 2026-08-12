@@ -487,6 +487,16 @@ fn check_debugfs_output(what: &str, output: &std::process::Output) -> BoxliteRes
     Ok(())
 }
 
+/// Quote a path for the debugfs `-f -` batch parser (libss): wrap in double
+/// quotes so whitespace stays one token, and backslash-escape embedded
+/// backslashes/quotes. Unquoted, a path containing a space (e.g. setuptools'
+/// `script (dev).tmpl` or `launcher manifest.xml`) is split into extra args and
+/// debugfs aborts that command with a usage error — which our strict
+/// `check_debugfs_output` then treats as a failed image build.
+fn quote_debugfs_path(path: &str) -> String {
+    format!("\"{}\"", path.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
 /// Normalize inode metadata in the ext4 image via debugfs: give every file the
 /// ownership its layer declared (0:0 when none was recorded), and restore the
 /// original mode on any entry whose owner-read bit was temporarily widened so
@@ -521,14 +531,15 @@ fn normalize_inodes_with_debugfs(
     let mut commands = String::new();
     for owner in owners {
         // sif sets inode field by path
-        commands.push_str(&format!("sif {} uid {}\n", owner.ext4_path, owner.uid));
-        commands.push_str(&format!("sif {} gid {}\n", owner.ext4_path, owner.gid));
+        let p = quote_debugfs_path(&owner.ext4_path);
+        commands.push_str(&format!("sif {} uid {}\n", p, owner.uid));
+        commands.push_str(&format!("sif {} gid {}\n", p, owner.gid));
     }
     // Restore the original mode on entries we widened for mke2fs. The value is
     // the full st_mode incl. type bits (e.g. a 0000 regular file -> 0100000),
     // matching the `sif … mode 0100555` form used by inject_file_into_ext4.
     for w in widened {
-        commands.push_str(&format!("sif {} mode 0{:o}\n", w.ext4_path, w.mode));
+        commands.push_str(&format!("sif {} mode 0{:o}\n", quote_debugfs_path(&w.ext4_path), w.mode));
     }
 
     let debugfs = get_debugfs_path();
@@ -636,24 +647,30 @@ pub fn inject_file_into_ext4(
 fn build_inject_commands(host_file_str: &str, guest_path: &str) -> String {
     let mut commands = String::new();
 
-    // Create parent directories
+    // Create parent directories (quote so a spaced guest path stays one token)
     let guest_path_obj = Path::new(guest_path);
     let mut current = PathBuf::new();
     if let Some(parent) = guest_path_obj.parent() {
         for component in parent.components() {
             current.push(component);
-            commands.push_str(&format!("mkdir /{}\n", current.display()));
+            let dir_path = format!("/{}", current.display());
+            commands.push_str(&format!("mkdir {}\n", quote_debugfs_path(&dir_path)));
         }
     }
 
     // Write host file into ext4 image (quote source path for spaces, e.g. macOS "Application Support")
     let ext4_dest = format!("/{}", guest_path);
-    commands.push_str(&format!("write \"{}\" {}\n", host_file_str, ext4_dest));
+    commands.push_str(&format!(
+        "write \"{}\" {}\n",
+        host_file_str,
+        quote_debugfs_path(&ext4_dest)
+    ));
 
     // Set ownership (uid=0, gid=0) and mode (0555 = r-xr-xr-x)
-    commands.push_str(&format!("sif {} uid 0\n", ext4_dest));
-    commands.push_str(&format!("sif {} gid 0\n", ext4_dest));
-    commands.push_str(&format!("sif {} mode 0100555\n", ext4_dest));
+    let dest_quoted = quote_debugfs_path(&ext4_dest);
+    commands.push_str(&format!("sif {} uid 0\n", dest_quoted));
+    commands.push_str(&format!("sif {} gid 0\n", dest_quoted));
+    commands.push_str(&format!("sif {} mode 0100555\n", dest_quoted));
 
     // Set ownership on parent directories too
     let mut current = PathBuf::new();
@@ -661,8 +678,9 @@ fn build_inject_commands(host_file_str: &str, guest_path: &str) -> String {
         for component in parent.components() {
             current.push(component);
             let dir_path = format!("/{}", current.display());
-            commands.push_str(&format!("sif {} uid 0\n", dir_path));
-            commands.push_str(&format!("sif {} gid 0\n", dir_path));
+            let dir_quoted = quote_debugfs_path(&dir_path);
+            commands.push_str(&format!("sif {} uid 0\n", dir_quoted));
+            commands.push_str(&format!("sif {} gid 0\n", dir_quoted));
         }
     }
 
@@ -1023,6 +1041,51 @@ mod tests {
         );
     }
 
+    /// Building an image from a source tree containing space-bearing filenames
+    /// must succeed — e.g. setuptools' `script (dev).tmpl` and
+    /// `command/launcher manifest.xml`, both of which ship in real Python
+    /// images (boxlite-agent-base reproduced this live).
+    ///
+    /// The debugfs `sif` pass must quote every in-image path: unquoted, a space
+    /// splits the path into extra argv entries and debugfs aborts that command
+    /// with `sif: Usage: set_inode <inode> <field> <value>`, which our strict
+    /// `check_debugfs_output` then treats as a failed image build. Each
+    /// space-bearing file yields two `sif` failures (uid, gid), so the
+    /// two setuptools files produce exactly the four usage errors seen in
+    /// `debugfs reported unexpected output while normalizing`.
+    ///
+    /// Skipped when e2fsprogs is absent or running as root (root skips the
+    /// debugfs normalization pass entirely, so the bug cannot reproduce).
+    #[test]
+    fn create_ext4_from_dir_handles_space_bearing_filenames() {
+        if util::find_binary("mke2fs").is_err() || util::find_binary("debugfs").is_err() {
+            eprintln!("skipping: mke2fs/debugfs not found (run `make runtime:debug`)");
+            return;
+        }
+        if unsafe { libc::geteuid() } == 0 {
+            eprintln!("skipping: root skips debugfs normalization entirely");
+            return;
+        }
+
+        let src_root = tempfile::tempdir().expect("source tempdir");
+        let src = src_root.path().join("rootfs");
+        for rel in [
+            "usr/lib/python3/dist-packages/setuptools/command/launcher manifest.xml",
+            "usr/lib/python3/dist-packages/setuptools/script (dev).tmpl",
+        ] {
+            let full = src.join(rel);
+            std::fs::create_dir_all(full.parent().unwrap()).expect("mkdir");
+            std::fs::write(&full, b"x").expect("write");
+        }
+
+        let out_root = tempfile::tempdir().expect("output tempdir");
+        let out = out_root.path().join("rootfs.ext4");
+        let _disk = create_ext4_from_dir(&src, &out, 0).expect(
+            "space-bearing source filenames must not abort the debugfs normalization \
+             pass (each sif path must be quoted)",
+        );
+    }
+
     /// A malformed `override_stat` xattr must abort the scan, not silently
     /// default to 0:0.
     ///
@@ -1290,32 +1353,32 @@ mod tests {
         let cmds = build_inject_commands("/host/boxlite-guest", "boxlite/bin/boxlite-guest");
 
         // Should create parent dirs: boxlite, boxlite/bin
-        assert!(cmds.contains("mkdir /boxlite\n"));
-        assert!(cmds.contains("mkdir /boxlite/bin\n"));
+        assert!(cmds.contains("mkdir \"/boxlite\"\n"));
+        assert!(cmds.contains("mkdir \"/boxlite/bin\"\n"));
 
-        // Should write the file (source path quoted for spaces)
-        assert!(cmds.contains("write \"/host/boxlite-guest\" /boxlite/bin/boxlite-guest\n"));
+        // Should write the file (both source and dest paths quoted for spaces)
+        assert!(cmds.contains("write \"/host/boxlite-guest\" \"/boxlite/bin/boxlite-guest\"\n"));
 
         // Should set file permissions
-        assert!(cmds.contains("sif /boxlite/bin/boxlite-guest uid 0\n"));
-        assert!(cmds.contains("sif /boxlite/bin/boxlite-guest gid 0\n"));
-        assert!(cmds.contains("sif /boxlite/bin/boxlite-guest mode 0100555\n"));
+        assert!(cmds.contains("sif \"/boxlite/bin/boxlite-guest\" uid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite/bin/boxlite-guest\" gid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite/bin/boxlite-guest\" mode 0100555\n"));
 
         // Should set parent dir ownership
-        assert!(cmds.contains("sif /boxlite uid 0\n"));
-        assert!(cmds.contains("sif /boxlite gid 0\n"));
-        assert!(cmds.contains("sif /boxlite/bin uid 0\n"));
-        assert!(cmds.contains("sif /boxlite/bin gid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite\" uid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite\" gid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite/bin\" uid 0\n"));
+        assert!(cmds.contains("sif \"/boxlite/bin\" gid 0\n"));
     }
 
     #[test]
     fn test_build_inject_commands_single_dir() {
         let cmds = build_inject_commands("/host/file", "dir/file");
 
-        assert!(cmds.contains("mkdir /dir\n"));
-        assert!(cmds.contains("write \"/host/file\" /dir/file\n"));
-        assert!(cmds.contains("sif /dir uid 0\n"));
-        assert!(cmds.contains("sif /dir gid 0\n"));
+        assert!(cmds.contains("mkdir \"/dir\"\n"));
+        assert!(cmds.contains("write \"/host/file\" \"/dir/file\"\n"));
+        assert!(cmds.contains("sif \"/dir\" uid 0\n"));
+        assert!(cmds.contains("sif \"/dir\" gid 0\n"));
     }
 
     #[test]
@@ -1326,21 +1389,21 @@ mod tests {
         assert!(!cmds.contains("mkdir"));
 
         // Should still write and set permissions
-        assert!(cmds.contains("write \"/host/file\" /file\n"));
-        assert!(cmds.contains("sif /file uid 0\n"));
-        assert!(cmds.contains("sif /file gid 0\n"));
-        assert!(cmds.contains("sif /file mode 0100555\n"));
+        assert!(cmds.contains("write \"/host/file\" \"/file\"\n"));
+        assert!(cmds.contains("sif \"/file\" uid 0\n"));
+        assert!(cmds.contains("sif \"/file\" gid 0\n"));
+        assert!(cmds.contains("sif \"/file\" mode 0100555\n"));
     }
 
     #[test]
     fn test_build_inject_commands_deeply_nested() {
         let cmds = build_inject_commands("/src/bin", "a/b/c/d/bin");
 
-        assert!(cmds.contains("mkdir /a\n"));
-        assert!(cmds.contains("mkdir /a/b\n"));
-        assert!(cmds.contains("mkdir /a/b/c\n"));
-        assert!(cmds.contains("mkdir /a/b/c/d\n"));
-        assert!(cmds.contains("write \"/src/bin\" /a/b/c/d/bin\n"));
+        assert!(cmds.contains("mkdir \"/a\"\n"));
+        assert!(cmds.contains("mkdir \"/a/b\"\n"));
+        assert!(cmds.contains("mkdir \"/a/b/c\"\n"));
+        assert!(cmds.contains("mkdir \"/a/b/c/d\"\n"));
+        assert!(cmds.contains("write \"/src/bin\" \"/a/b/c/d/bin\"\n"));
     }
 
     #[test]
@@ -1350,9 +1413,27 @@ mod tests {
             "boxlite/bin/boxlite-guest",
         );
 
-        // Source path must be quoted so debugfs handles the space correctly
+        // Both the source path and the dest path must be quoted so debugfs
+        // keeps the space-bearing tokens intact (debugfs would otherwise split
+        // them into extra args and abort the command with a usage error).
         assert!(cmds.contains(
-            "write \"/Users/user/Library/Application Support/boxlite/runtimes/v0.6.0/boxlite-guest\" /boxlite/bin/boxlite-guest\n"
+            "write \"/Users/user/Library/Application Support/boxlite/runtimes/v0.6.0/boxlite-guest\" \"/boxlite/bin/boxlite-guest\"\n"
         ));
+        assert!(cmds.contains("sif \"/boxlite/bin/boxlite-guest\" mode 0100555\n"));
+    }
+
+    #[test]
+    fn test_build_inject_commands_guest_path_with_spaces() {
+        // setuptools layers a `script (dev).tmpl` in the filesystem image; the
+        // normalization pass must quote the guest path or the `sif` command
+        // aborts with `sif: Usage: set_inode <inode> <field> <value>`.
+        let cmds = build_inject_commands("/host/pkg", "setuptools/script (dev).tmpl");
+
+        assert!(cmds.contains("mkdir \"/setuptools\"\n"));
+        assert!(cmds.contains("write \"/host/pkg\" \"/setuptools/script (dev).tmpl\"\n"));
+        assert!(cmds.contains("sif \"/setuptools/script (dev).tmpl\" uid 0\n"));
+        assert!(cmds.contains("sif \"/setuptools/script (dev).tmpl\" gid 0\n"));
+        assert!(cmds.contains("sif \"/setuptools\" uid 0\n"));
+        assert!(cmds.contains("sif \"/setuptools\" gid 0\n"));
     }
 }

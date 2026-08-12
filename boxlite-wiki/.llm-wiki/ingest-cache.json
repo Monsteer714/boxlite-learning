@@ -1,0 +1,271 @@
+{
+  "entries": {
+    "key-takeaways-2026-08-12.md": {
+      "hash": "05148c2e0a1f87a02748b11e37496e3a413c5a4beaef972a116e8a91e113731a",
+      "timestamp": 1786498616634,
+      "filesWritten": [
+        "wiki/entities/boxlite.md",
+        "wiki/entities/box.md",
+        "wiki/entities/simplebox.md",
+        "wiki/entities/jailer.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/key-takeaways-2026-08-12.md"
+      ]
+    },
+    "CLAUDE-20260812-1786500247186.md": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timestamp": 1786500358294,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/CLAUDE-20260812-1786500247186.md"
+      ]
+    },
+    "CLAUDE-20260812-1786500247090.md": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timestamp": 1786500367740,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md (append)",
+        "wiki/overview.md",
+        "wiki/sources/CLAUDE-20260812-1786500247090.md"
+      ]
+    },
+    "README-20260812-1786500247201.md": {
+      "hash": "b8d5e7d1a20a193d817ca5395c0e0ee11712a39f75a3331c4b9e1f41c9add329",
+      "timestamp": 1786500386171,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247201.md"
+      ]
+    },
+    "quickstart-python-20260812-1786500247131.md": {
+      "hash": "4d5dca408b473c70a39e8c39bfdf267853b2bbc516b317111ab6d01f25c51cf7",
+      "timestamp": 1786500398287,
+      "filesWritten": [
+        "wiki/entities/codebox.md",
+        "wiki/entities/browserbox.md",
+        "wiki/entities/computerbox.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/quickstart-python-20260812-1786500247131.md"
+      ]
+    },
+    "quickstart-rust-20260812-1786500247139.md": {
+      "hash": "cb159fe4236e58dbd5dcef63cd0583e806994d68ffa1ccbfbb162493290d031a",
+      "timestamp": 1786500415812,
+      "filesWritten": [
+        "wiki/entities/boxoptions.md",
+        "wiki/entities/boxcommand.md",
+        "wiki/entities/litebox.md",
+        "wiki/entities/simplebox.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/quickstart-rust-20260812-1786500247139.md"
+      ]
+    },
+    "README-20260812-1786500247083.md": {
+      "hash": "6daffc01a4e22a4cdf96259e9783938d91bcf4f39148ef4ebdbd1b320b1426ee",
+      "timestamp": 1786500416874,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md (new entry to append)",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247083.md"
+      ]
+    },
+    "image-registry-configuration-20260812-1786500247154.md": {
+      "hash": "2192d55535da3006a159df44e78809a91e056d5f68fcae36862856e164857de5",
+      "timestamp": 1786500424280,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/image-registry-configuration-20260812-1786500247154.md"
+      ]
+    },
+    "rest-api-e2e-20260812-1786500247177.md": {
+      "hash": "16ba8f7185919d6381e706f53ef67364d143b64fd8417a3c5111789bc1913768",
+      "timestamp": 1786500432597,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/rest-api-e2e-20260812-1786500247177.md"
+      ]
+    },
+    "README-20260812-1786500247054.md": {
+      "hash": "329e435f04028c777d0d88fa0de431658c66e30f4def29fbe424dc63b30f27a3",
+      "timestamp": 1786500432657,
+      "filesWritten": [
+        "wiki/entities/simplebox.md",
+        "wiki/entities/box.md",
+        "wiki/entities/litebox.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247054.md"
+      ]
+    },
+    "quickstart-nodejs-20260812-1786500247123.md": {
+      "hash": "06c52809bc57ef6cf0026b2aef838da75e17f7c9df7e7ffd1d66f8ffd27b71c6",
+      "timestamp": 1786500433886,
+      "filesWritten": [
+        "wiki/entities/simplebox.md",
+        "wiki/entities/codebox.md",
+        "wiki/entities/browserbox.md",
+        "wiki/entities/computerbox.md",
+        "wiki/entities/interactivebox.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/quickstart-nodejs-20260812-1786500247123.md"
+      ]
+    },
+    "README-20260812-1786500247106.md": {
+      "hash": "899e3d37e9dc140c4974a15bd6cfd5e737a0bf731e8d280f18357e59c58eaa87",
+      "timestamp": 1786500454266,
+      "filesWritten": [
+        "wiki/entities/codebox.md",
+        "wiki/entities/browserbox.md",
+        "wiki/entities/computerbox.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247106.md"
+      ]
+    },
+    "README-20260812-1786500247075.md": {
+      "hash": "249f196d7eb20fda0a606752bc0b5eca03c4d32fc4182be5f7fbd61e0d753970",
+      "timestamp": 1786500463233,
+      "filesWritten": [
+        "wiki/entities/codebox.md",
+        "wiki/entities/browserbox.md",
+        "wiki/entities/computerbox.md",
+        "wiki/entities/interactivebox.md",
+        "wiki/entities/boxoptions.md",
+        "wiki/index.md",
+        "wiki/log.md (new entry to append)",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247075.md"
+      ]
+    },
+    "README-20260812-1786500247239.md": {
+      "hash": "60d86d57d4a171bc08216665dded1924e1104336503b134bfca4ad70fc0276b3",
+      "timestamp": 1786500470149,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247239.md"
+      ]
+    },
+    "README-20260812-1786500247193.md": {
+      "hash": "3c4cb9fecfcb29de33a37816003d397c00f348676d7f6e766fd6e7b96cfd49ce",
+      "timestamp": 1786500476135,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md (append)",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247193.md"
+      ]
+    },
+    "README-20260812-1786500247097.md": {
+      "hash": "a47ac5c65a6487507be0dfd4991f733b06764e8af4321721b051706e3a647b7f",
+      "timestamp": 1786500479439,
+      "filesWritten": [
+        "wiki/entities/kvm.md",
+        "wiki/entities/wsl2.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247097.md"
+      ]
+    },
+    "auto-stop-resume-20260812-1786500247161.md": {
+      "hash": "11ce10df8718dcb9ffa63a4f72427d5b04bc4e5788f448d998b4d1e5f349ab2d",
+      "timestamp": 1786500495198,
+      "filesWritten": [
+        "wiki/entities/box.md",
+        "wiki/entities/runner.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/auto-stop-resume-20260812-1786500247161.md"
+      ]
+    },
+    "ai-agent-integration-20260812-1786500247170.md": {
+      "hash": "df6db08a750c9bbd4bf140ed7f0825b9f068171a67471e34a913a4c6e40be900",
+      "timestamp": 1786500514647,
+      "filesWritten": [
+        "wiki/entities/securityoptions.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/ai-agent-integration-20260812-1786500247170.md"
+      ]
+    },
+    "README-20260812-1786500247061.md": {
+      "hash": "02324d9d19c2ea148085f3f0bc87b7f2e9e3eeac8e34f8688e484188de10b65c",
+      "timestamp": 1786500518169,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247061.md"
+      ]
+    },
+    "CLAUDE-20260812-1786500247209.md": {
+      "hash": "a19e84d8b1843909561c3e7ea56606b4cc4fd06f6d93e4425634861b5bd218cd",
+      "timestamp": 1786500525280,
+      "filesWritten": [
+        "wiki/entities/dashboard.md",
+        "wiki/entities/dex.md",
+        "wiki/index.md",
+        "wiki/log.md (append entry)",
+        "wiki/overview.md",
+        "wiki/sources/CLAUDE-20260812-1786500247209.md"
+      ]
+    },
+    "README-20260812-1786500247216.md": {
+      "hash": "fe677a83736a10a14a3cf3ea33d21450d603dd085b80cea8f214646575b99005",
+      "timestamp": 1786500554360,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247216.md"
+      ]
+    },
+    "NETWORKING-20260812-1786500247231.md": {
+      "hash": "4b01a298f3a72e69f51ba4a20b8ed0761d85c7d9107fe844bb3c55588f54d2e0",
+      "timestamp": 1786500563414,
+      "filesWritten": [
+        "wiki/index.md",
+        "wiki/log.md (append)",
+        "wiki/overview.md",
+        "wiki/sources/NETWORKING-20260812-1786500247231.md"
+      ]
+    },
+    "README-20260812-1786500247042.md": {
+      "hash": "13f9712044e630124c18b57f6dccdd2ca57b7e6e62dc0e462db953053bb8629c",
+      "timestamp": 1786500579300,
+      "filesWritten": [
+        "wiki/entities/execution.md",
+        "wiki/entities/boxcommand.md",
+        "wiki/entities/boxid.md",
+        "wiki/index.md",
+        "wiki/log.md",
+        "wiki/overview.md",
+        "wiki/sources/README-20260812-1786500247042.md"
+      ]
+    }
+  }
+}

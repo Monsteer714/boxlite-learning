@@ -1,0 +1,5 @@
+## [2026-08-12] ingest | BoxLite infra — Network Model
+- Ingested `NETWORKING-20260812-1786500247231.md` — control-plane VPC network model (`sst.config.ts` §2 PLATFORM + §10 RUNNER): single-door ALB ingress / outbound-only NAT, egress patterns A (fail-closed) and B (fail-open), runner `:3003` pinning, per-AZ fck-nat cost/HA tradeoff.
+- Created source page `sources/NETWORKING-20260812-1786500247231`; concepts `fail-closed-vs-fail-open`, `egress-only-public-ip`, `per-az-nat`.
+- Extended `entities/boxlite-control-plane` with the network-model subsection and components; extended `concepts/sandboxing-layers` with the network layer (no-route + SG + single-door ALB).
+- Flagged open questions: service on runner `:3003` & missing Api/Proxy → runner flow; Elastic IP vs ephemeral; fck-nat CloudWatch auto-recovery; VPC flow logs; scope of the ~$16/mo cost figure.
