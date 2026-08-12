@@ -14,15 +14,33 @@ static void output_callback(const char *text, int is_stderr, void *user_data) {
 int main(void) {
   printf("BoxLite C API Example\n");
   printf("Version: %s\n\n", boxlite_version());
+  
+  printf("[DEBUG] : Title and Version printed\n\n");
 
+  printf("[DEBUG] : ready to call create_runtime_or_exit()\n\n");
+  
   CBoxliteRuntime *runtime = create_runtime_or_exit();
+
+  printf("[DEBUG] : create_runtime_or_exit() called\n\n");
+
   if (runtime == NULL) {
+    printf("[DEBUG] : create_runtime_or_exit() return null, return\n\n");
     return 1;
   }
 
+  printf("[DEBUG] : ready to call create_alpine_box_or_exit()\n\n");
+
   CBoxHandle *box = create_alpine_box_or_exit(runtime);
-  if (box == NULL) {
+
+  printf("[DEBUG] : create_alpine_box_or_exit() called\n\n");
+
+  if (box == NULL) {  
+    printf("[DEBUG] : create_alpine_box_or_exit() return null, return\n\n");
+
     boxlite_runtime_free(runtime);
+
+    printf("[DEBUG] : boxlite_runtime_free() called\n\n");
+
     return 1;
   }
 
