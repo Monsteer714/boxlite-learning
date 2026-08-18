@@ -7,8 +7,6 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use crate::commands::serve::resolve_volume_mounts;
-
 use super::super::types::{CreateBoxRequest, ListBoxesResponse, RemoveQuery};
 use super::super::{
     AppState, box_info_to_response, build_box_options, error_from_boxlite, error_response,
@@ -20,11 +18,7 @@ pub(in crate::commands::serve) async fn create_box(
     Json(req): Json<CreateBoxRequest>,
 ) -> Response {
     let name = req.name.clone();
-    let volumes = match resolve_volume_mounts(&state.runtime, &req.volumes).await {
-        Ok(volumes) => volumes,
-        Err(e) => return error_from_boxlite(&e),
-    };
-    let mut options = match build_box_options(&req) {
+    let options = match build_box_options(&req) {
         Ok(options) => options,
         Err(e) => {
             return error_response(
@@ -35,10 +29,6 @@ pub(in crate::commands::serve) async fn create_box(
             );
         }
     };
-    // `BoxOptions.volumes` is a pub field: inject the resolved mounts here.
-    // Volume resolution is async (`resolve_volume_mounts` awaits
-    // `VolumeHandle::get`), so it cannot run inside the sync `build_box_options`.
-    options.volumes = volumes;
 
     let litebox = match state.runtime.create(options, name).await {
         Ok(b) => b,

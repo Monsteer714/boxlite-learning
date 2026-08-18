@@ -9,7 +9,7 @@ use crate::rootfs::guest::{GuestRootfs, GuestRootfsManager};
 use crate::runtime::id::{BoxID, BoxIDMint};
 use crate::runtime::layout::{BoxFilesystemLayout, FilesystemLayout, FsLayoutConfig};
 use crate::runtime::lock::RuntimeLock;
-use crate::runtime::options::{BoxArchive, BoxOptions, BoxliteOptions};
+use crate::runtime::options::{validate_guest_path, BoxArchive, BoxOptions, BoxliteOptions};
 use crate::runtime::signal_handler::timeout_to_duration;
 use crate::runtime::types::{BoxInfo, BoxState, BoxStatus, ContainerID};
 use crate::vmm::VmmKind;
@@ -440,6 +440,18 @@ impl RuntimeImpl {
             return Err(BoxliteError::Stopped(
                 "Cannot create box: runtime has been shut down".into(),
             ));
+        }
+
+        let mut options = options;
+
+        // Named-volume mounts are resolved here, not by the caller: id → host
+        // path is a runtime capability, and create_inner is the single point
+        // every entry point (CLI, serve, SDK) funnels through.
+        if !options.volume_mounts.is_empty() {
+            let store = crate::volumes::NamedVolumeStore::new(self.layout.home_dir());
+            options
+                .volumes
+                .extend(resolve_named_volume_mounts(&store, &options.volume_mounts)?);
         }
 
         // Check DB for existing name — use lookup_box to get full (config, state)
@@ -1691,6 +1703,28 @@ fn find_boxes_depending_on(runtime: &RuntimeImpl, box_id: &str) -> BoxliteResult
     Ok(dependents.into_iter().collect())
 }
 
+/// Resolve named-volume mount requests to concrete `VolumeSpec`s.
+///
+/// Each mount names a server-assigned `volume_id`; the store maps it to the
+/// volume's host directory. A missing volume surfaces as `NotFound`; a
+/// non-absolute `guest_path` as `InvalidArgument`.
+fn resolve_named_volume_mounts(
+    store: &crate::volumes::NamedVolumeStore,
+    mounts: &[crate::runtime::options::NamedVolumeMount],
+) -> BoxliteResult<Vec<crate::runtime::options::VolumeSpec>> {
+    let mut resolved = Vec::with_capacity(mounts.len());
+    for m in mounts {
+        validate_guest_path(&m.guest_path)?;
+        let info = store.get(&m.volume_id)?;
+        resolved.push(crate::runtime::options::VolumeSpec {
+            host_path: info.host_path.to_string_lossy().into_owned(),
+            guest_path: m.guest_path.clone(),
+            read_only: m.read_only,
+        });
+    }
+    Ok(resolved)
+}
+
 /// Reject qcow2 disks that contain backing file references.
 ///
 /// Imported disks must be standalone — a backing reference could point to
@@ -1936,6 +1970,58 @@ mod tests {
     }
 
     #[test]
+    fn resolve_named_volume_mounts_maps_id_to_host_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = crate::volumes::NamedVolumeStore::new(tmp.path());
+        let volume = store.create().unwrap();
+
+        let mounts = vec![crate::runtime::options::NamedVolumeMount {
+            volume_id: volume.id.clone(),
+            guest_path: "/data".to_string(),
+            read_only: true,
+        }];
+        let specs = resolve_named_volume_mounts(&store, &mounts).unwrap();
+
+        assert_eq!(specs.len(), 1);
+        assert_eq!(
+            specs[0].host_path,
+            volume.host_path.to_string_lossy().into_owned()
+        );
+        assert_eq!(specs[0].guest_path, "/data");
+        assert!(specs[0].read_only);
+    }
+
+    #[test]
+    fn resolve_named_volume_mounts_missing_volume_is_not_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = crate::volumes::NamedVolumeStore::new(tmp.path());
+
+        let mounts = vec![crate::runtime::options::NamedVolumeMount {
+            volume_id: "no-such-volume".to_string(),
+            guest_path: "/data".to_string(),
+            read_only: false,
+        }];
+        let err = resolve_named_volume_mounts(&store, &mounts).unwrap_err();
+        assert!(matches!(err, BoxliteError::NotFound(_)));
+    }
+
+    #[test]
+    fn resolve_named_volume_mounts_rejects_non_absolute_guest_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = crate::volumes::NamedVolumeStore::new(tmp.path());
+
+        let mounts = vec![crate::runtime::options::NamedVolumeMount {
+            volume_id: "whatever".to_string(),
+            guest_path: "relative/path".to_string(),
+            read_only: false,
+        }];
+        // guest_path is validated before the store is consulted, so the
+        // volume id is never touched — any string reaches the validation error.
+        let err = resolve_named_volume_mounts(&store, &mounts).unwrap_err();
+        assert!(matches!(err, BoxliteError::InvalidArgument(_)));
+    }
+
+    #[test]
     fn options_compatibility_normalizes_capability_names() {
         let mut actual = test_box_config(false);
         actual.options.advanced.capabilities.add =
@@ -2125,6 +2211,7 @@ mod tests {
             box_home,
         }
     }
+
 
     #[tokio::test]
     async fn get_info_does_not_create_cached_box_handle() {
