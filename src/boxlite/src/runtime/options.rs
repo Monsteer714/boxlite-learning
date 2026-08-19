@@ -328,8 +328,6 @@ pub struct BoxOptions {
     pub env: Vec<(String, String)>,
     pub rootfs: RootfsSpec,
     pub volumes: Vec<VolumeSpec>,
-    #[serde(default)]
-    pub volume_mounts: Vec<NamedVolumeMount>,
     pub network: NetworkSpec,
     /// Explicit host publication for the local runtime.
     ///
@@ -526,7 +524,6 @@ impl Default for BoxOptions {
             env: Vec::new(),
             rootfs: RootfsSpec::default(),
             volumes: Vec::new(),
-            volume_mounts: Vec::new(),
             network: NetworkSpec::default(),
             ports: Vec::new(),
             auto_remove: default_auto_remove(),
@@ -633,24 +630,15 @@ impl Default for RootfsSpec {
 }
 
 /// Filesystem mount specification.
+///
+/// `host_path` is normally a concrete host directory. A `volume://<id>`
+/// reference names a server-assigned volume instead: the runtime resolves it
+/// to the volume's host directory at create time, keeping id → path mapping
+/// (and the host path itself) out of the caller's hands.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct VolumeSpec {
     pub host_path: String,
     pub guest_path: String,
-    pub read_only: bool,
-}
-
-/// A named-volume mount request, unresolved.
-///
-/// `volume_id` names a server-assigned volume; the runtime resolves it to the
-/// volume's host directory at create time. Unlike [`VolumeSpec`], this never
-/// carries a concrete host path, so a caller cannot select an arbitrary host
-/// directory — the runtime is the only place id → path mapping happens.
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-pub struct NamedVolumeMount {
-    pub volume_id: String,
-    pub guest_path: String,
-    #[serde(default)]
     pub read_only: bool,
 }
 
@@ -668,7 +656,6 @@ pub(crate) fn validate_guest_path(guest_path: &str) -> BoxliteResult<()> {
     }
     Ok(())
 }
-
 
 /// Network mode for public box configuration surfaces.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

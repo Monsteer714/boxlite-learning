@@ -23,7 +23,7 @@ use tokio::sync::RwLock;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 
-use boxlite::runtime::options::{NamedVolumeMount, NetworkConfig, NetworkMode};
+use boxlite::runtime::options::{NetworkConfig, NetworkMode, VolumeSpec};
 use boxlite::{
     BoxCommand, BoxInfo, BoxOptions, BoxliteRuntime, ExecStdin, Execution, LiteBox, NetworkSpec,
     RootfsSpec,
@@ -766,11 +766,14 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
         cmd: req.cmd.clone(),
         user: req.user.clone(),
         tty: req.tty.unwrap_or(false),
-        volume_mounts: req
+        volumes: req
             .volumes
             .iter()
-            .map(|m| NamedVolumeMount {
-                volume_id: m.volume_id.clone(),
+            .map(|m| VolumeSpec {
+                // `volume://<id>` reference — the runtime resolves it to the
+                // volume's host directory at create time, so a client never
+                // names a concrete host path.
+                host_path: format!("volume://{}", m.volume),
                 guest_path: m.guest_path.clone(),
                 read_only: m.read_only,
             })
@@ -1442,7 +1445,7 @@ mod tests {
     }
 
     // ============================================================
-    // REST named-volume wire contract: `volume_id` only, never `host_path`.
+    // REST named-volume wire contract: `volume` only, never `host_path`.
     //
     // Mirrors the `security` boundary above: `CreateVolumeMount` carries
     // `#[serde(deny_unknown_fields)]`, so a client cannot smuggle a
@@ -1452,7 +1455,7 @@ mod tests {
 
     #[test]
     fn create_volume_mount_rejects_client_supplied_host_path() {
-        let json = r#"{"volume_id":"v1","guest_path":"/data","host_path":"/etc"}"#;
+        let json = r#"{"volume":"v1","guest_path":"/data","host_path":"/etc"}"#;
         let msg = match serde_json::from_str::<super::types::CreateVolumeMount>(json) {
             Ok(_) => panic!("`host_path` must be rejected at deserialize"),
             Err(e) => e.to_string(),
@@ -1465,13 +1468,26 @@ mod tests {
 
     #[test]
     fn create_box_request_accepts_volume_mounts() {
-        let json = r#"{"image":"alpine:latest","volumes":[{"volume_id":"v1","guest_path":"/data","read_only":false}]}"#;
+        let json = r#"{"image":"alpine:latest","volumes":[{"volume":"v1","guest_path":"/data","read_only":false}]}"#;
         let req: super::types::CreateBoxRequest =
             serde_json::from_str(json).expect("volume mounts must deserialize");
         assert_eq!(req.volumes.len(), 1);
-        assert_eq!(req.volumes[0].volume_id, "v1");
+        assert_eq!(req.volumes[0].volume, "v1");
         assert_eq!(req.volumes[0].guest_path, "/data");
         assert!(!req.volumes[0].read_only);
+    }
+
+    #[test]
+    fn build_box_options_maps_volume_mounts_to_volume_references() {
+        let json = r#"{"image":"alpine:latest","volumes":[{"volume":"v1","guest_path":"/data","read_only":true}]}"#;
+        let req: super::types::CreateBoxRequest = serde_json::from_str(json).unwrap();
+        let options = build_box_options(&req).unwrap();
+        // The serve layer emits an unresolved `volume://<id>` reference; the
+        // runtime resolves it to the backing host directory at create time.
+        assert_eq!(options.volumes.len(), 1);
+        assert_eq!(options.volumes[0].host_path, "volume://v1");
+        assert_eq!(options.volumes[0].guest_path, "/data");
+        assert!(options.volumes[0].read_only);
     }
 
     fn uploaded_v3_archive(box_options: serde_json::Value) -> Vec<u8> {

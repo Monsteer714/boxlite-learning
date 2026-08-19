@@ -219,7 +219,7 @@ pub(crate) struct CreateBoxAdvancedOptions {
 
 #[derive(Debug, Serialize)]
 pub(crate) struct CreateBoxVolumeSpec {
-    pub source: String,
+    pub volume: String,
     pub guest_path: String,
     pub read_only: bool,
 }
@@ -227,18 +227,14 @@ pub(crate) struct CreateBoxVolumeSpec {
 impl From<&crate::runtime::options::VolumeSpec> for CreateBoxVolumeSpec {
     fn from(volume: &crate::runtime::options::VolumeSpec) -> Self {
         Self {
-            source: managed_volume_source(&volume.host_path),
+            volume: volume
+                .host_path
+                .strip_prefix("volume://")
+                .unwrap_or(&volume.host_path)
+                .to_string(),
             guest_path: volume.guest_path.clone(),
             read_only: volume.read_only,
         }
-    }
-}
-
-fn managed_volume_source(source: &str) -> String {
-    if source.starts_with("volume://") {
-        source.to_string()
-    } else {
-        format!("volume://{source}")
     }
 }
 
@@ -388,16 +384,15 @@ pub(crate) struct ListBoxesResponse {
 pub(crate) struct CreateVolumeRequest {}
 
 /// A single volume as returned by the REST API.
+///
+/// The backing host directory is deliberately **not** exposed: a client
+/// identifies a volume by `id` and lets the server resolve the mount source.
 #[derive(Debug, Deserialize)]
 pub(crate) struct VolumeResponse {
     pub id: String,
     pub created_at: String,
     #[serde(default)]
     pub size_bytes: Option<u64>,
-    /// Host directory backing this volume — lets a client resolve a volume id
-    /// to a mount source (e.g. for volume mounts at box creation).
-    #[serde(default)]
-    pub host_path: Option<String>,
 }
 
 impl VolumeResponse {
@@ -410,11 +405,9 @@ impl VolumeResponse {
             id: self.id.clone(),
             created_at,
             size_bytes: self.size_bytes,
-            host_path: self
-                .host_path
-                .as_deref()
-                .map(PathBuf::from)
-                .unwrap_or_default(),
+            // The REST surface keeps the backing host directory private: a
+            // client identifies a volume by id, never by host path.
+            host_path: PathBuf::new(),
         }
     }
 }
@@ -717,14 +710,14 @@ mod tests {
         );
         assert_eq!(req.secrets.as_ref().map(Vec::len), Some(1));
         let volume = &req.volumes.as_ref().unwrap()[0];
-        assert_eq!(volume.source, "volume://volume-123");
+        assert_eq!(volume.volume, "volume-123");
         assert_eq!(volume.guest_path, "/data");
         assert!(!volume.read_only);
         let json = serde_json::to_value(&req).unwrap();
         assert_eq!(
             json["volumes"],
             serde_json::json!([{
-                "source": "volume://volume-123",
+                "volume": "volume-123",
                 "guest_path": "/data",
                 "read_only": false
             }])
@@ -767,7 +760,12 @@ mod tests {
     }
 
     #[test]
-    fn test_create_box_request_preserves_scheme_volume_source() {
+    fn test_create_box_request_strips_scheme_from_sdk_volume_source() {
+        // The Node/Python SDK bindings validate their own public `source`
+        // field starts with `volume://` but then store it *verbatim* in
+        // `VolumeSpec.host_path`. The wire field carries a bare id, so the
+        // scheme has to come off here — otherwise the server receives
+        // `volume: "volume://<id>"`, which matches no real volume.
         use crate::runtime::options::{BoxOptions, VolumeSpec};
 
         let opts = BoxOptions {
@@ -781,7 +779,7 @@ mod tests {
 
         let req = CreateBoxRequest::from_options(&opts, None);
         let volume = &req.volumes.as_ref().unwrap()[0];
-        assert_eq!(volume.source, "volume://volume-123");
+        assert_eq!(volume.volume, "volume-123");
     }
 
     #[test]

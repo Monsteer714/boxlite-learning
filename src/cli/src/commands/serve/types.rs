@@ -119,7 +119,7 @@ pub(super) struct ListBoxesResponse {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CreateVolumeMount {
-    pub volume_id: String,
+    pub volume: String,
     pub guest_path: String,
     #[serde(default)]
     pub read_only: bool,
