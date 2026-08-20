@@ -1931,7 +1931,6 @@ mod tests {
     use crate::runtime::backend::RuntimeBackend;
     use crate::runtime::images::ImageBackend;
     use crate::runtime::options::RootfsSpec;
-    use crate::runtime::volumes::VolumeBackend;
     use crate::vmm::guest_binary::GuestBinary;
     use tempfile::TempDir;
 
