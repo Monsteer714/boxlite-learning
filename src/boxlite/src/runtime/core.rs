@@ -61,7 +61,7 @@ pub struct BoxliteRuntime {
     image_backend: Option<Arc<dyn ImageBackend>>,
     /// Named-volume capability — an `Arc` view of the same backend (local or
     /// REST), mirroring `image_backend` / `images()`. Surfaced via `volumes()`.
-    /// The concrete backend returns `Unsupported` until one is wired up.
+    /// `None` makes `volumes()` fail; both constructors install one.
     volume_backend: Option<Arc<dyn VolumeBackend>>,
     /// Identity capability — `Some` only for backends with a notion of
     /// remote identity (currently REST; an `Arc` view of the same backend,
@@ -454,14 +454,15 @@ impl BoxliteRuntime {
 
     /// Get a handle for named-volume operations (create, list, get, remove).
     ///
-    /// Returns a [`VolumeHandle`](crate::runtime::VolumeHandle) over this
-    /// runtime's `<home>/volumes` tree, following the same accessor pattern as
+    /// Returns a [`VolumeHandle`](crate::runtime::VolumeHandle) over whatever
+    /// backs this runtime — the `<home>/volumes` tree for a local runtime, the
+    /// server's volumes for a REST one — following the same accessor pattern as
     /// `images()`.
     ///
     /// # Errors
     ///
-    /// The handle's operations currently return `BoxliteError::Unsupported`
-    /// until a concrete volume backend is wired up.
+    /// `Unsupported` when the runtime carries no volume backend — no
+    /// constructor produces that today.
     ///
     /// # Example
     ///

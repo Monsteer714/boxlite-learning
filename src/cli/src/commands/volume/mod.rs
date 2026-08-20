@@ -3,8 +3,9 @@
 //! Volumes are addressed by a server-assigned id (like boxes): `create` takes
 //! no arguments and prints the new id, and get/rm operate on ids. Each leaf
 //! module owns its own `Args` struct and `run()`; this module holds the
-//! subcommand enum and dispatches. The backend is not implemented yet, so every
-//! command currently returns "not supported".
+//! subcommand enum and dispatches. Against a local runtime the commands reach
+//! `NamedVolumeStore` under `{home}/volumes/`; with `--url` they reach the
+//! server's volume endpoints instead.
 
 use clap::{Args, Subcommand};
 

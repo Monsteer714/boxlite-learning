@@ -105,6 +105,10 @@ impl FsLayoutConfig {
 /// │       └── {path_hash}-{manifest_short}/
 /// ├── boxes/                               # Per-box directories (BoxFilesystemLayout)
 /// │   └── {box_id}/                            # See BoxFilesystemLayout
+/// ├── volumes/                             # Named volumes (NamedVolumeStore)
+/// │   ├── {volume_id}/                         # Payload directory mounted into a box
+/// │   └── anonymous/                           # CLI `-v {guest_path}` anonymous mounts
+/// │       └── {ulid}/                          # Reserved: NamedVolumeStore skips this tree
 /// ├── bases/                               # Flat backing files (nanoid-named)
 /// │   ├── {nanoid}.qcow2                       # Snapshot / clone base container disk
 /// │   └── {nanoid}.ext4                        # Guest rootfs cache

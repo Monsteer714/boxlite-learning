@@ -3,7 +3,7 @@
 //! Provides:
 //! - `GuestVolumeManager` for virtiofs shares and block devices
 //! - `ContainerVolumeManager` for container bind mounts
-//! - `VolumeInfo` metadata for named volumes (backend not yet implemented)
+//! - `NamedVolumeStore` + `VolumeInfo` for named volumes under `{home}/volumes/`
 
 mod container_volume;
 mod guest_volume;

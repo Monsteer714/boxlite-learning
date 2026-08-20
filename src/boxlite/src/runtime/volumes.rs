@@ -8,8 +8,7 @@
 //! The trait is `#[async_trait]` like the other capability backends
 //! ([`ImageBackend`](crate::runtime::images::ImageBackend),
 //! [`AuthBackend`](crate::runtime::auth::AuthBackend)) so REST backends can
-//! perform network calls. The concrete backend is not implemented yet — every
-//! operation currently returns `Unsupported`.
+//! perform network calls.
 
 use std::sync::Arc;
 
@@ -20,8 +19,9 @@ use crate::volumes::VolumeInfo;
 
 /// Internal trait for named-volume management.
 ///
-/// Implemented by both `LocalRuntime` and the REST runtime. Both return
-/// `Unsupported` until a managed volume backend is wired up.
+/// `LocalRuntime` stores each volume as a directory under `{home}/volumes/{id}`
+/// (see [`NamedVolumeStore`](crate::volumes::NamedVolumeStore)); the REST
+/// runtime forwards every operation to the server's `volumes` endpoint.
 #[async_trait]
 pub(crate) trait VolumeBackend: Send + Sync {
     /// Create a volume, returning its server-assigned metadata (including id).
