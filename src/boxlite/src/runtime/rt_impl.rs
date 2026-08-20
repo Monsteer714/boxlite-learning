@@ -444,14 +444,12 @@ impl RuntimeImpl {
 
         let mut options = options;
 
-        // `volume://` references in `volumes` are resolved here, not by the
-        // caller: id → host path is a runtime capability, and create_inner is
-        // the single point every entry point (CLI, serve, SDK) funnels through.
-        if options
-            .volumes
-            .iter()
-            .any(|v| v.host_path.starts_with("volume://"))
-        {
+        // Mounts are resolved and validated here, not by the caller: id → host
+        // path is a runtime capability, and create_inner is the single point
+        // every entry point (CLI, serve, SDK) funnels through. Every mount goes
+        // through it, not just `volume://` ones — the guest_path rule is the
+        // mount's, so skipping host-path-only requests would skip their check.
+        if !options.volumes.is_empty() {
             let store = crate::volumes::NamedVolumeStore::new(self.layout.home_dir());
             options.volumes = resolve_volume_mounts(&store, options.volumes)?;
         }
@@ -1705,21 +1703,23 @@ fn find_boxes_depending_on(runtime: &RuntimeImpl, box_id: &str) -> BoxliteResult
     Ok(dependents.into_iter().collect())
 }
 
-/// Resolve `volume://<id>` references in a box's mount list to concrete host
-/// directories.
+/// Validate every mount and resolve `volume://<id>` references to concrete
+/// host directories.
 ///
-/// A mount whose `host_path` is a `volume://` reference names a server-assigned
-/// volume; the store maps it to the volume's host directory. A missing volume
-/// surfaces as `NotFound`; a non-absolute `guest_path` as `InvalidArgument`.
-/// Plain host-path mounts pass through untouched.
+/// `guest_path` must be absolute for every mount, however its source is
+/// spelled — a non-absolute one surfaces as `InvalidArgument`. A mount whose
+/// `host_path` is a `volume://` reference additionally names a server-assigned
+/// volume, which the store maps to its host directory; a missing volume
+/// surfaces as `NotFound`. Plain host paths are otherwise passed through
+/// unchanged.
 fn resolve_volume_mounts(
     store: &crate::volumes::NamedVolumeStore,
     volumes: Vec<crate::runtime::options::VolumeSpec>,
 ) -> BoxliteResult<Vec<crate::runtime::options::VolumeSpec>> {
     let mut resolved = Vec::with_capacity(volumes.len());
     for v in volumes {
+        validate_guest_path(&v.guest_path)?;
         if let Some(id) = v.host_path.strip_prefix("volume://") {
-            validate_guest_path(&v.guest_path)?;
             let info = store.get(id)?;
             resolved.push(crate::runtime::options::VolumeSpec {
                 host_path: info.host_path.to_string_lossy().into_owned(),
@@ -2024,6 +2024,23 @@ mod tests {
         }];
         // guest_path is validated before the store is consulted, so the
         // volume id is never touched — any string reaches the validation error.
+        let err = resolve_volume_mounts(&store, volumes).unwrap_err();
+        assert!(matches!(err, BoxliteError::InvalidArgument(_)));
+    }
+
+    #[test]
+    fn resolve_volume_mounts_rejects_non_absolute_guest_path_on_host_mounts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = crate::volumes::NamedVolumeStore::new(tmp.path());
+
+        let volumes = vec![crate::runtime::options::VolumeSpec {
+            host_path: "/host/data".to_string(),
+            guest_path: "relative/path".to_string(),
+            read_only: false,
+        }];
+        // The rule belongs to the mount, not to the reference form: a
+        // relative guest_path is as unmountable for a host path as it is
+        // for a `volume://` id.
         let err = resolve_volume_mounts(&store, volumes).unwrap_err();
         assert!(matches!(err, BoxliteError::InvalidArgument(_)));
     }
@@ -3275,6 +3292,37 @@ mod tests {
             }
             Err(other) => panic!("expected Stopped before archive validation, got: {other}"),
             Ok(_) => panic!("import should fail after shutdown"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_rejects_relative_guest_path_on_a_host_mount() {
+        let (runtime, _dir) = create_test_runtime_without_host_preflight();
+
+        // No `volume://` reference in this request. The mount list must still
+        // be validated, so the box is rejected before anything is built.
+        let result = runtime
+            .create_inner(
+                BoxOptions {
+                    rootfs: RootfsSpec::Image("alpine:latest".into()),
+                    volumes: vec![crate::runtime::options::VolumeSpec {
+                        host_path: "/host/data".to_string(),
+                        guest_path: "relative/path".to_string(),
+                        read_only: false,
+                    }],
+                    ..Default::default()
+                },
+                Some("relative-guest-path".into()),
+                false,
+            )
+            .await;
+
+        match result {
+            Err(BoxliteError::InvalidArgument(msg)) => {
+                assert!(msg.contains("guest_path"), "unexpected message: {msg}");
+            }
+            Err(other) => panic!("Expected InvalidArgument, got: {other}"),
+            Ok(_) => panic!("create should reject a relative guest_path"),
         }
     }
 
