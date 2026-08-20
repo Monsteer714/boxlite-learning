@@ -1863,44 +1863,54 @@ impl super::images::ImageBackend for LocalRuntime {
     }
 }
 
+/// Run one [`NamedVolumeStore`](crate::volumes::NamedVolumeStore) call off the
+/// async runtime.
+///
+/// Every store method is synchronous filesystem IO — `remove` on a
+/// multi-gigabyte volume would pin a tokio worker for the whole
+/// `remove_dir_all` — so it belongs on the blocking pool, like the DB calls
+/// elsewhere in this file. `what` names the operation in the shutdown error.
+async fn run_volume_op<T, F>(runtime: &SharedRuntimeImpl, what: &str, op: F) -> BoxliteResult<T>
+where
+    F: FnOnce(crate::volumes::NamedVolumeStore) -> BoxliteResult<T> + Send + 'static,
+    T: Send + 'static,
+{
+    if runtime.shutdown_token.is_cancelled() {
+        return Err(BoxliteError::Stopped(format!(
+            "Cannot {what}: runtime has been shut down"
+        )));
+    }
+    let store = crate::volumes::NamedVolumeStore::new(runtime.layout.home_dir());
+    tokio::task::spawn_blocking(move || op(store))
+        .await
+        .map_err(|error| {
+            BoxliteError::Internal(format!("failed to join volume store task: {error}"))
+        })?
+}
+
 // Named-volume operations (separate from RuntimeBackend). Each volume is
 // stored in a directory under `{home}/volumes/{id}` by `NamedVolumeStore`.
 #[async_trait::async_trait]
 impl super::volumes::VolumeBackend for LocalRuntime {
     async fn create_volume(&self) -> BoxliteResult<crate::volumes::VolumeInfo> {
-        if self.0.shutdown_token.is_cancelled() {
-            return Err(BoxliteError::Stopped(
-                "Cannot create volume: runtime has been shut down".into(),
-            ));
-        }
-        crate::volumes::NamedVolumeStore::new(self.0.layout.home_dir()).create()
+        run_volume_op(&self.0, "create volume", |store| store.create()).await
     }
 
     async fn list_volumes(&self) -> BoxliteResult<Vec<crate::volumes::VolumeInfo>> {
-        if self.0.shutdown_token.is_cancelled() {
-            return Err(BoxliteError::Stopped(
-                "Cannot list volumes: runtime has been shut down".into(),
-            ));
-        }
-        crate::volumes::NamedVolumeStore::new(self.0.layout.home_dir()).list()
+        run_volume_op(&self.0, "list volumes", |store| store.list()).await
     }
 
-    async fn get_volume(&self, _id: &str) -> BoxliteResult<crate::volumes::VolumeInfo> {
-        if self.0.shutdown_token.is_cancelled() {
-            return Err(BoxliteError::Stopped(
-                "Cannot get volume: runtime has been shut down".into(),
-            ));
-        }
-        crate::volumes::NamedVolumeStore::new(self.0.layout.home_dir()).get(_id)
+    async fn get_volume(&self, id: &str) -> BoxliteResult<crate::volumes::VolumeInfo> {
+        let id = id.to_string();
+        run_volume_op(&self.0, "get volume", move |store| store.get(&id)).await
     }
 
-    async fn remove_volume(&self, _id: &str, _force: bool) -> BoxliteResult<()> {
-        if self.0.shutdown_token.is_cancelled() {
-            return Err(BoxliteError::Stopped(
-                "Cannot remove volume: runtime has been shut down".into(),
-            ));
-        }
-        crate::volumes::NamedVolumeStore::new(self.0.layout.home_dir()).remove(_id, _force)
+    async fn remove_volume(&self, id: &str, force: bool) -> BoxliteResult<()> {
+        let id = id.to_string();
+        run_volume_op(&self.0, "remove volume", move |store| {
+            store.remove(&id, force)
+        })
+        .await
     }
 }
 
@@ -2168,6 +2178,32 @@ mod tests {
         let runtime = RuntimeImpl::initialize(options, ExperimentalFeatures::default())
             .expect("Failed to create test runtime");
         (runtime, temp_dir)
+    }
+
+    #[tokio::test]
+    async fn volume_backend_roundtrips_create_get_list_remove() {
+        use crate::runtime::volumes::VolumeBackend;
+
+        let (runtime, _temp_dir) = create_test_runtime_without_host_preflight();
+        let local = LocalRuntime(runtime);
+
+        let created = local.create_volume().await.unwrap();
+        assert!(created.host_path.is_dir());
+
+        let got = local.get_volume(&created.id).await.unwrap();
+        assert_eq!(created.host_path, got.host_path);
+
+        let ids: Vec<String> = local
+            .list_volumes()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|volume| volume.id)
+            .collect();
+        assert_eq!(vec![created.id.clone()], ids);
+
+        local.remove_volume(&created.id, false).await.unwrap();
+        assert!(!created.host_path.exists());
     }
 
     /// Create a minimal BoxConfig for testing.
