@@ -60,12 +60,7 @@ impl NamedVolumeStore {
                 e
             ))
         })?;
-        Ok(VolumeInfo {
-            id,
-            host_path: dir,
-            created_at: Utc::now(),
-            size_bytes: None,
-        })
+        self.volume_info(id, &dir)
     }
 
     /// List all named volume.
@@ -83,7 +78,14 @@ impl NamedVolumeStore {
         };
 
         let mut infos = Vec::new();
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.map_err(|e| {
+                BoxliteError::Storage(format!(
+                    "failed to read an entry of volume dir {}: {}",
+                    self.volumes_dir.display(),
+                    e
+                ))
+            })?;
             let path = entry.path();
             if !path.is_dir() {
                 continue;
@@ -93,7 +95,7 @@ impl NamedVolumeStore {
             if name == ANONYMOUS_VOLUMES_DIR {
                 continue;
             }
-            infos.push(self.volume_info(name, &path));
+            infos.push(self.volume_info(name, &path)?);
         }
         Ok(infos)
     }
@@ -106,7 +108,7 @@ impl NamedVolumeStore {
         if !dir.is_dir() {
             return Err(BoxliteError::NotFound(format!("volume not found: {id}")));
         }
-        Ok(self.volume_info(id.to_string(), &dir))
+        self.volume_info(id.to_string(), &dir)
     }
 
     /// Remove a volume by id. With `force`, a missing volume is a no-op.
@@ -152,24 +154,99 @@ impl NamedVolumeStore {
         Ok(self.volumes_dir.join(id))
     }
 
-    pub fn volume_info(&self, id: String, dir: &Path) -> VolumeInfo {
-        let created_at = fs::metadata(dir)
-            .and_then(|m| m.modified())
-            .ok()
-            .map(DateTime::<Utc>::from)
-            .unwrap_or_else(Utc::now);
-        VolumeInfo {
+    /// Read a volume's metadata off its directory.
+    ///
+    /// `created_at` is the directory's birth time. The mtime cannot stand in for
+    /// it: the mtime moves every time a box writes into the volume, so a
+    /// volume's "creation" time would march forward with its contents.
+    /// Filesystems that cannot report a birth time (`ErrorKind::Unsupported`)
+    /// leave the mtime as the only available answer; any other IO error is a
+    /// real failure and is reported, never papered over with the current time.
+    pub fn volume_info(&self, id: String, dir: &Path) -> BoxliteResult<VolumeInfo> {
+        let metadata = fs::metadata(dir).map_err(|e| {
+            BoxliteError::Storage(format!("failed to stat volume {}: {}", dir.display(), e))
+        })?;
+        let created_at = match metadata.created() {
+            Ok(created_at) => created_at,
+            Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                metadata.modified().map_err(|e| {
+                    BoxliteError::Storage(format!(
+                        "failed to read modification time of volume {}: {}",
+                        dir.display(),
+                        e
+                    ))
+                })?
+            }
+            Err(e) => {
+                return Err(BoxliteError::Storage(format!(
+                    "failed to read creation time of volume {}: {}",
+                    dir.display(),
+                    e
+                )));
+            }
+        };
+        Ok(VolumeInfo {
             id,
             host_path: dir.to_path_buf(),
-            created_at,
+            created_at: DateTime::<Utc>::from(created_at),
             size_bytes: None,
-        }
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use filetime::FileTime;
+
+    /// The mtime of a volume directory moves whenever a box writes into it, so
+    /// `created_at` must not be read from it — and `create()` must report the
+    /// same instant that a later `get()` does.
+    #[test]
+    fn created_at_does_not_follow_the_directory_mtime() {
+        let tmp = tempfile::tempdir().unwrap();
+        if fs::metadata(tmp.path()).unwrap().created().is_err() {
+            eprintln!("skipped: this filesystem reports no birth time");
+            return;
+        }
+        let store = NamedVolumeStore::new(tmp.path());
+        let created = store.create().unwrap();
+
+        // Stand in for a box writing into the volume: drive the directory mtime
+        // forward to a fixed point rather than waiting for the clock to tick.
+        // It has to move *forward* — macOS drags a file's birth time back to an
+        // mtime set before it, which would hide the very drift under test.
+        let later = FileTime::from_unix_time(2_000_000_000, 0); // 2033-05-18
+        filetime::set_file_mtime(&created.host_path, later).unwrap();
+
+        let got = store.get(&created.id).unwrap();
+        assert_ne!(
+            2_000_000_000,
+            got.created_at.timestamp(),
+            "created_at followed the mtime instead of the birth time"
+        );
+        assert_eq!(
+            created.created_at, got.created_at,
+            "create() and get() must report one created_at for the same volume"
+        );
+    }
+
+    /// A volume whose directory cannot be stat'd has no creation time to
+    /// report; the failure must reach the caller instead of being replaced by
+    /// "just created".
+    #[test]
+    fn volume_info_reports_a_stat_failure_instead_of_inventing_created_at() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = NamedVolumeStore::new(tmp.path());
+        let missing = store.volume_dir("gone").unwrap();
+
+        let err = store.volume_info("gone".to_string(), &missing).unwrap_err();
+        assert!(
+            matches!(err, BoxliteError::Storage(_)),
+            "unreadable volume dir must fail, got {err:?}"
+        );
+    }
 
     #[test]
     fn create_then_get_roundtrips() {
