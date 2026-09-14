@@ -1232,7 +1232,7 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
     // Every mount names a volume this server owns; the runtime resolves the
     // reference to a directory at create. A client cannot reach a host path
     // through this field — `CreateVolumeMount` has none.
-    let volumes = req
+    let volumes: Vec<_> = req
         .volumes
         .as_ref()
         .map(|mounts| {
@@ -1249,6 +1249,24 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
                 .collect()
         })
         .unwrap_or_default();
+
+    // `openapi/box.openapi.yaml` pins a managed mount's `read_only` to
+    // `enum: [false]`: read-only managed mounts are not implemented, and the
+    // contract says `true` is rejected rather than silently downgraded. The
+    // REST client refuses to send it and the CLI refuses to build it; this is
+    // the same rule for a client that speaks to the server directly.
+    let volumes_ro: Vec<String> = volumes
+        .iter()
+        .filter(|v| v.read_only)
+        .flat_map(|v| v.managed_volume.clone())
+        .collect();
+
+    if !volumes_ro.is_empty() {
+        return Err(boxlite::BoxliteError::Unsupported(format!(
+            "read-only managed volumes are not supported yet; mount [{}] read-write",
+            volumes_ro.join(", ")
+        )));
+    }
 
     Ok(BoxOptions {
         rootfs,
@@ -2094,13 +2112,25 @@ mod tests {
         }
     }
 
+    #[test]
+    fn build_box_options_rejects_volume_mount_read_only_is_true() {
+        let req: super::types::CreateBoxRequest = serde_json::from_str(
+            r#"{"image":"alpine:latest","volumes":[{"managed_volume":"my-data","guest_path":"/data","read_only":true}]}"#,
+        )
+        .expect("a mount request must deserialize");
+
+        let err = build_box_options(&req)
+            .expect_err("volume mount with read_only: true should be rejected");
+        assert!(matches!(err, boxlite::BoxliteError::Unsupported(_)))
+    }
+
     /// A mount names a volume; the runtime turns that reference into a
     /// directory. The wire carries no host path, and `deny_unknown_fields`
     /// is what keeps a client from adding one.
     #[test]
     fn build_box_options_carries_volume_mounts_from_the_wire() {
         let req: super::types::CreateBoxRequest = serde_json::from_str(
-            r#"{"image":"alpine:latest","volumes":[{"managed_volume":"my-data","guest_path":"/data","read_only":true}]}"#,
+            r#"{"image":"alpine:latest","volumes":[{"managed_volume":"my-data","guest_path":"/data","read_only":false}]}"#,
         )
         .expect("a mount request must deserialize");
 
@@ -2111,7 +2141,7 @@ mod tests {
             options.volumes[0].managed_volume.as_deref()
         );
         assert_eq!("/data", options.volumes[0].guest_path);
-        assert!(options.volumes[0].read_only);
+        assert!(!options.volumes[0].read_only);
         assert!(
             options.volumes[0].host_path.is_empty(),
             "a client must not be able to name a host path"
@@ -2988,6 +3018,7 @@ mod tests {
             serde_json::json!({
                 "volumes": [{
                     "managed_volume": "someone-elses-data",
+                    "host_path": "/",
                     "guest_path": "/data",
                     "read_only": false
                 }]
