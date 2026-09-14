@@ -105,7 +105,7 @@ impl FsLayoutConfig {
 /// │       └── {path_hash}-{manifest_short}/
 /// ├── boxes/                               # Per-box directories (BoxFilesystemLayout)
 /// │   └── {box_id}/                            # See BoxFilesystemLayout
-/// ├── volumes/                             # Named volumes (LocalNamedVolumeStore)
+/// ├── volumes/                             # Named volumes (LocalVolumeStore)
 /// │   └── {volume_id}/                         # One volume
 /// │       ├── .metadata.json                   # Its name and creation time
 /// │       └── _data/                           # Payload, mounted into a box
