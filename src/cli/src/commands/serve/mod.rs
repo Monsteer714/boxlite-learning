@@ -1231,7 +1231,7 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
 
     // Every mount names a volume this server owns; the runtime resolves the
     // reference to a directory at create. A client cannot reach a host path
-    // through this field — `CreateVolumeMount` has none.
+    // through this field — `MountSpecRequest` has none.
     let volumes: Vec<_> = req
         .volumes
         .as_ref()

@@ -58,11 +58,11 @@ pub(super) struct CreateBoxRequest {
     #[serde(default)]
     pub secrets: Option<Vec<SecretSpecRequest>>,
     /// Volumes to mount, each naming a volume the server owns. A client never
-    /// names a host path: `CreateVolumeMount` carries no such field and the
+    /// names a host path: `MountSpecRequest` carries no such field and the
     /// struct denies unknown ones, so a directory on the server's disk cannot
     /// be smuggled in through a mount request.
     #[serde(default)]
-    pub volumes: Option<Vec<CreateVolumeMount>>,
+    pub volumes: Option<Vec<MountSpecRequest>>,
     // `security` / `security_settings` are intentionally absent from
     // the REST wire schema. Sandbox security is the operator's
     // policy, set server-side. Because the struct carries
@@ -182,7 +182,7 @@ pub(super) struct ListBoxesResponse {
 /// so `managed_volume`, not a shorter local spelling.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct CreateVolumeMount {
+pub(super) struct MountSpecRequest {
     /// Volume id or name — whatever the caller knows it by.
     pub managed_volume: String,
     pub guest_path: String,
