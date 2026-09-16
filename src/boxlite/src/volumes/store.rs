@@ -67,6 +67,58 @@ struct VolumeMetadata {
     created_at: DateTime<Utc>,
 }
 
+/// Proof that the caller holds the volumes-directory lock.
+///
+/// Only [`LocalVolumeStore::lock`] hands one out and dropping it releases
+/// the lock, so a critical section is exactly the scope this value lives
+/// in. The two mutations that must not interleave with anything are here as
+/// their already-locked bodies; the lock-free reads are forwarded too, so
+/// one handle answers a whole section.
+///
+/// Being a type rather than a convention is the point: `flock` counts per
+/// open file description and [`LocalVolumeStore::lock`] opens a new one on
+/// every call, so a thread that took the lock twice would wait on itself
+/// forever. Nothing reachable from here locks again, so that call cannot be
+/// written.
+#[derive(Debug)]
+pub struct LockedVolumeStore<'a> {
+    store: &'a LocalVolumeStore,
+    _lock: fs::File,
+}
+
+impl LockedVolumeStore<'_> {
+    /// [`LocalVolumeStore::create`], without taking the lock again.
+    pub fn create(&self, name: Option<&str>) -> BoxliteResult<VolumeInfo> {
+        self.store.create_locked(name)
+    }
+
+    /// Remove a volume by id or name. With `force`, a missing volume is a
+    /// no-op.
+    ///
+    /// Only reachable through this handle, so a removal and a `create` of
+    /// the same name cannot interleave into a torn scan. The lock the handle
+    /// carries is held across `remove_dir_all`, so deleting a large payload
+    /// stalls whoever wants the lock next. That is the price of keeping one
+    /// kind of directory under `volumes/`; moving the payload to a trash
+    /// directory first would buy concurrency at the cost of a second shape
+    /// `list` has to know about.
+    pub fn remove(&self, reference: &str, force: bool) -> BoxliteResult<()> {
+        self.store.remove_locked(reference, force)
+    }
+
+    /// [`LocalVolumeStore::get`], which needs no lock; forwarded so a
+    /// section holding this handle does not have to reach around it.
+    pub fn get(&self, reference: &str) -> BoxliteResult<VolumeInfo> {
+        self.store.get(reference)
+    }
+
+    /// [`LocalVolumeStore::payload_dir`], which needs no lock; see
+    /// [`Self::get`].
+    pub(crate) fn payload_dir(&self, reference: &str) -> BoxliteResult<PathBuf> {
+        self.store.payload_dir(reference)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LocalVolumeStore {
     volumes_dir: PathBuf,
@@ -80,14 +132,41 @@ impl LocalVolumeStore {
         }
     }
 
+    /// The directory this store owns, and the file its lock is taken on.
+    ///
+    /// For the tests that have to park a runtime operation on that lock:
+    /// deriving the path a second time would leave them locking somewhere
+    /// else the day the layout moves. Test-only, because production code
+    /// reaches the directory through the store rather than by path.
+    #[cfg(test)]
+    pub(crate) fn volumes_dir(&self) -> &Path {
+        &self.volumes_dir
+    }
+
+    /// Take the volumes-directory lock, held until the returned handle
+    /// drops.
+    ///
+    /// For a section that has to be one step against a concurrent removal --
+    /// resolving a mount and then persisting the box that holds it, or
+    /// scanning holders and then deleting -- rather than a single store
+    /// call, which locks on its own. Blocking, so it belongs on the blocking
+    /// pool and never on an async worker;
+    /// `run_blocking_with_volume_store` in `runtime/rt_impl.rs` is where the
+    /// runtime's sections take it.
+    pub fn lock(&self) -> BoxliteResult<LockedVolumeStore<'_>> {
+        Ok(LockedVolumeStore {
+            store: self,
+            _lock: self.lock_volumes_dir()?,
+        })
+    }
+
     /// Create a volume, naming it after its id when the caller supplies none.
     ///
     /// The name is what makes `-v my-data:/data` work without knowing the id,
     /// so it has to be unique: a duplicate would make that reference ambiguous
     /// and silently pick one of two volumes.
     pub fn create(&self, name: Option<&str>) -> BoxliteResult<VolumeInfo> {
-        let _lock = self.lock_volumes_dir()?;
-        self.create_locked(name)
+        self.lock()?.create(name)
     }
 
     /// The body of [`Self::create`]; the caller holds the volumes-directory
@@ -200,18 +279,12 @@ impl LocalVolumeStore {
             .ok_or_else(|| not_found(reference))
     }
 
-    /// Remove a volume by id or name. With `force`, a missing volume is a
-    /// no-op.
-    ///
-    /// Held under the volumes-directory lock like `create`: a removal that
-    /// interleaves with a `create` of the same name must leave one consistent
-    /// outcome, not a torn scan. The lock is held across `remove_dir_all`, so
-    /// deleting a large payload stalls concurrent creates for its duration.
-    /// That is the price of keeping one kind of directory under `volumes/`;
-    /// moving the payload to a trash directory first would buy concurrency at
-    /// the cost of a second shape `list` has to know about.
-    pub fn remove(&self, reference: &str, force: bool) -> BoxliteResult<()> {
-        let _lock = self.lock_volumes_dir()?;
+    /// The body of [`LockedVolumeStore::remove`]; the caller holds the
+    /// volumes-directory lock, so the lookup and the `remove_dir_all` below
+    /// are one step. There is deliberately no lock-taking wrapper beside
+    /// `create`'s: every removal has a holder question to answer first, and
+    /// the answer has to be found under the same lock that then deletes.
+    fn remove_locked(&self, reference: &str, force: bool) -> BoxliteResult<()> {
         let Some((_, dir)) = self.locate(reference)? else {
             if force {
                 return Ok(());
@@ -690,7 +763,8 @@ mod tests {
         for _ in 0..20 {
             store.create(Some("contended")).unwrap();
             let ops: Vec<Op> = vec![
-                Box::new(|s| s.remove("contended", true)),
+                // The lock this takes is what the other two must survive.
+                Box::new(|s| s.lock()?.remove("contended", true)),
                 // A mount racing the removal may find the volume already gone;
                 // that is "not found", never a torn read or a stray create.
                 Box::new(|s| match s.payload_dir("contended") {
@@ -717,7 +791,7 @@ mod tests {
                     .unwrap()
                     .expect("no operation may fail because another one raced it");
             }
-            store.remove("contended", true).unwrap();
+            store.lock().unwrap().remove("contended", true).unwrap();
         }
     }
 
@@ -804,6 +878,8 @@ mod tests {
             let bystander = store.create(Some(&format!("stays-{kind}"))).unwrap();
 
             store
+                .lock()
+                .unwrap()
                 .remove(&reference_of(&target), false)
                 .unwrap_or_else(|e| panic!("remove by {kind} must succeed: {e:?}"));
             assert!(
@@ -820,9 +896,15 @@ mod tests {
                 "removed by {kind}: another volume is untouched"
             );
 
-            let err = store.remove(&reference_of(&target), false).unwrap_err();
+            let err = store
+                .lock()
+                .unwrap()
+                .remove(&reference_of(&target), false)
+                .unwrap_err();
             assert!(matches!(err, BoxliteError::NotFound(_)), "{err:?}");
             store
+                .lock()
+                .unwrap()
                 .remove(&reference_of(&target), true)
                 .unwrap_or_else(|e| panic!("force by {kind} tolerates a missing volume: {e:?}"));
         }
@@ -842,7 +924,7 @@ mod tests {
                 "id {bad:?} must be rejected by get"
             );
             assert!(
-                store.remove(bad, true).is_err(),
+                store.lock().unwrap().remove(bad, true).is_err(),
                 "id {bad:?} must be rejected by remove"
             );
         }
@@ -901,7 +983,10 @@ mod tests {
                 "{stray} must not be mountable"
             );
             assert!(
-                matches!(store.remove(stray, false), Err(BoxliteError::NotFound(_))),
+                matches!(
+                    store.lock().unwrap().remove(stray, false),
+                    Err(BoxliteError::NotFound(_))
+                ),
                 "{stray} must not be removable"
             );
         }
@@ -942,7 +1027,7 @@ mod tests {
             matches!(store.get("bad"), Err(BoxliteError::NotFound(_))),
             "the name lived only in the sidecar"
         );
-        store.remove(&bad.id, false).unwrap();
+        store.lock().unwrap().remove(&bad.id, false).unwrap();
         assert_eq!(1, store.list().unwrap().len());
     }
 

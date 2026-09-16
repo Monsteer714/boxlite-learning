@@ -3,7 +3,9 @@
 //! Provides:
 //! - `GuestVolumeManager` for virtiofs shares and block devices
 //! - `ContainerVolumeManager` for container bind mounts
-//! - `LocalVolumeStore` and `VolumeInfo` for named volumes under `{home}/volumes/`
+//! - `LocalVolumeStore` and `VolumeInfo` for named volumes under
+//!   `{home}/volumes/`, and `LockedVolumeStore` for the sections that must
+//!   hold that directory's lock across more than one store call
 
 mod container_volume;
 mod guest_volume;
@@ -15,4 +17,4 @@ pub use container_volume::{ContainerMount, ContainerVolumeManager};
 pub use guest_volume::GuestVolumeManager;
 pub use share::{VolumeShare, classify_volume_share};
 pub use staging::stage_single_file;
-pub use store::{LocalVolumeStore, VolumeInfo};
+pub use store::{LocalVolumeStore, LockedVolumeStore, VolumeInfo};
