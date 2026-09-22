@@ -155,8 +155,7 @@ type JsVolumeSpec =
       // The volume's server-assigned id or its name - the server resolves either.
       managedVolume: string;
       guestPath: string;
-      // Read-only managed mounts are not implemented yet; `true` is rejected.
-      readOnly?: false;
+      readOnly?: boolean;  // Default: false; the server binds the volume read-only
     }
   | {
       hostPath: string;    // Path on host

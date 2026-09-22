@@ -1986,10 +1986,9 @@ components:
         read_only:
           type: boolean
           default: false
-          enum: [false]
           description: |
-            Read-only managed mounts are not implemented yet; `true` is
-            rejected rather than silently downgraded to read-write.
+            Mount the volume read-only: the box can read but not modify the
+            files under the mount. Omitted means read-write.
 
     VolumeState:
       type: string

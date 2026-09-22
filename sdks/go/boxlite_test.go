@@ -213,8 +213,8 @@ func TestWithManagedVolumeKeepsOriginsApart(t *testing.T) {
 			t.Errorf("managed volume: got managedVolume=%q hostPath=%q",
 				cfg.volumes[0].managedVolume, cfg.volumes[0].hostPath)
 		}
-		// There is no read-only counterpart: the server rejects read_only on a
-		// managed mount, so a managed volume is always read-write here.
+		// WithManagedVolume is the read-write form; WithManagedVolumeReadOnly
+		// is the only way to set readOnly on a managed mount.
 		if cfg.volumes[0].readOnly {
 			t.Error("WithManagedVolume should be read-write")
 		}
@@ -222,6 +222,23 @@ func TestWithManagedVolumeKeepsOriginsApart(t *testing.T) {
 			t.Errorf("host bind: got managedVolume=%q hostPath=%q",
 				cfg.volumes[1].managedVolume, cfg.volumes[1].hostPath)
 		}
+	}
+}
+
+// WithManagedVolumeReadOnly is WithManagedVolume plus readOnly: same origin
+// (managedVolume, never hostPath), so the REST runtime sends it as a managed
+// mount with read_only set and the server binds it read-only.
+func TestWithManagedVolumeReadOnlySetsReadOnlyOnAManagedOrigin(t *testing.T) {
+	cfg := &boxConfig{}
+	WithManagedVolumeReadOnly("my-data", "/data")(cfg)
+
+	if len(cfg.volumes) != 1 {
+		t.Fatalf("volumes: got %d", len(cfg.volumes))
+	}
+	got := cfg.volumes[0]
+	if got.managedVolume != "my-data" || got.hostPath != "" || got.guestPath != "/data" || !got.readOnly {
+		t.Errorf("got managedVolume=%q hostPath=%q guestPath=%q readOnly=%v",
+			got.managedVolume, got.hostPath, got.guestPath, got.readOnly)
 	}
 }
 

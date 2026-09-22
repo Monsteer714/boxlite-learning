@@ -947,6 +947,25 @@ mod tests {
         }
     }
 
+    /// `read_only` is carried verbatim; the server enforces it on the runner.
+    #[test]
+    fn read_only_managed_mount_reaches_wire() {
+        use crate::runtime::options::{BoxOptions, VolumeSpec};
+
+        let opts = BoxOptions {
+            volumes: vec![VolumeSpec {
+                read_only: true,
+                ..VolumeSpec::managed_volume("my-data", "/data")
+            }],
+            ..Default::default()
+        };
+
+        let req = CreateBoxRequest::from_options(&opts, None);
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["volumes"][0]["managed_volume"], "my-data");
+        assert_eq!(json["volumes"][0]["read_only"], true);
+    }
+
     #[test]
     #[allow(deprecated)]
     fn deprecated_auto_remove_does_not_change_rest_lifecycle_defaults() {

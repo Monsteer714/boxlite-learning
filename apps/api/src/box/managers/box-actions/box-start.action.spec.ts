@@ -173,6 +173,48 @@ describe('BoxStartAction.handleRunnerBoxUnknownStateOnDesiredStateStart', () => 
     expect(updatedFields.some((u) => u.state === BoxState.CREATING)).toBe(true)
   })
 
+  // The runner re-mounts from the box's persisted VolumeSpec, so enforcement
+  // does not depend on this metadata; it carries readOnly so the mount has
+  // one shape everywhere the API describes it (CREATE_BOX payload, START
+  // metadata) instead of a field that appears in one and not the other.
+  it("carries each mount's readOnly into the runner metadata", async () => {
+    const runnerId = 'runner-boot-2'
+
+    const box = new Box('region-1', 'ro-box')
+    box.runnerId = runnerId
+    box.image = 'boxlite/base'
+    box.state = BoxState.UNKNOWN
+    box.desiredState = BoxDesiredState.STARTED
+    box.pending = true
+    box.volumes = [{ volumeId: 'vol-1', mountPath: '/data', subpath: 'sets/a', readOnly: true }]
+
+    const runner = { id: runnerId, state: RunnerState.READY } as Runner
+    const runnerService = { findOneOrFail: jest.fn(async () => runner) }
+    const createBox = jest.fn(async (_box: Box, _metadata?: { [key: string]: string }) => undefined)
+    const runnerAdapterFactory = { create: jest.fn(async () => ({ createBox }) as any) }
+    const lockCode = new LockCode('lock-boot-2')
+    const boxRepository = { update: jest.fn(async () => box) }
+    const redisLockProvider = { getCode: jest.fn(async () => lockCode) }
+    const organizationService = { findOne: jest.fn(async () => ({ boxMetadata: {} })) }
+
+    const action = new BoxStartAction(
+      runnerService as any,
+      runnerAdapterFactory as any,
+      boxRepository as any,
+      organizationService as any,
+      {} as any,
+      redisLockProvider as any,
+      {} as any,
+    )
+
+    await (action as BoxAction).run(box, lockCode)
+
+    const metadata = createBox.mock.calls[0][1] ?? {}
+    expect(JSON.parse(metadata['volumes'])).toEqual([
+      { volumeId: 'vol-1', mountPath: '/data', subpath: 'sets/a', readOnly: true },
+    ])
+  })
+
   it('moves an unknown box with no image to ERROR without calling createBox', async () => {
     const runnerId = 'runner-boot-2'
 

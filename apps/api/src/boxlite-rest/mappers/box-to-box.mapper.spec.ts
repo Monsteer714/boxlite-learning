@@ -38,7 +38,23 @@ describe('BoxLite lifecycle policy mapper', () => {
       volumes: [{ managed_volume: 'volume-123', guest_path: '/data', read_only: false }],
     })
 
-    expect(mapped.volumes).toEqual([{ volumeId: 'volume-123', mountPath: '/data' }])
+    expect(mapped.volumes).toEqual([{ volumeId: 'volume-123', mountPath: '/data', readOnly: false }])
+  })
+
+  it('carries read_only through as readOnly', () => {
+    const mapped = createBoxToCreateBox({
+      volumes: [{ managed_volume: 'volume-123', guest_path: '/data', read_only: true }],
+    })
+
+    expect(mapped.volumes).toEqual([{ volumeId: 'volume-123', mountPath: '/data', readOnly: true }])
+  })
+
+  it('leaves readOnly undefined when read_only is omitted', () => {
+    const mapped = createBoxToCreateBox({
+      volumes: [{ managed_volume: 'volume-123', guest_path: '/data' }],
+    })
+
+    expect(mapped.volumes?.[0].readOnly).toBeUndefined()
   })
 
   // A name is as valid as an id here; VolumeService.validateVolumes resolves
@@ -48,7 +64,7 @@ describe('BoxLite lifecycle policy mapper', () => {
       volumes: [{ managed_volume: 'customer-data', guest_path: '/data', read_only: false }],
     })
 
-    expect(mapped.volumes).toEqual([{ volumeId: 'customer-data', mountPath: '/data' }])
+    expect(mapped.volumes).toEqual([{ volumeId: 'customer-data', mountPath: '/data', readOnly: false }])
   })
 
   it('maps REST secret specs to secret placeholder rules', () => {
