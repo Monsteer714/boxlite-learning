@@ -157,7 +157,7 @@ type JsVolumeSpec =
       managedVolume: string;
       guestPath: string;
       subPath?: string;    // Mount only this prefix of the volume; omitted mounts everything
-      readOnly?: boolean;  // Default: false; the server binds the volume read-only
+      readOnly?: boolean;  // Default: false (read-write); true makes the server bind the volume read-only
     }
   | {
       hostPath: string;    // Path on host
