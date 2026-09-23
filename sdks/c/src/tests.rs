@@ -387,7 +387,15 @@ unsafe fn managed_volume_spec_after(
 
     add(opts);
 
-    let spec = unsafe { (*opts).options.volumes.first().cloned() };
+    // `Ok` from `boxlite_options_new` means the out-param was set, but that is an
+    // FFI contract the compiler cannot see; `as_ref` makes the null case an
+    // explicit failure instead of a dereference of a pointer it cannot vouch for.
+    let spec = unsafe { opts.as_ref() }
+        .expect("boxlite_options_new returned Ok without setting the options handle")
+        .options
+        .volumes
+        .first()
+        .cloned();
     unsafe { boxlite_options_free(opts) };
     spec
 }
