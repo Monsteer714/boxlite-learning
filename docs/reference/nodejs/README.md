@@ -162,7 +162,7 @@ type JsVolumeSpec =
   | {
       hostPath: string;    // Path on host
       guestPath: string;   // Path in container
-      readOnly?: boolean;  // Default: false
+      readOnly?: boolean;  // Default: false (read-write); true shares the host path read-only
     };
 ```
 
