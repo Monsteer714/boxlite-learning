@@ -89,6 +89,46 @@ describe('BoxStartAction.handleRunnerBoxStoppedStateOnDesiredStateStart', () => 
     expect(updatedFields.some((u) => u.state === BoxState.STARTING)).toBe(true)
   })
 
+  // A restart is where readOnly is easiest to lose: the runner re-mounts from
+  // the START metadata, so a box created read-only must not come back
+  // read-write because this path forgot the field the create path carries.
+  it("carries each mount's readOnly into the restart metadata", async () => {
+    const runnerId = 'runner-own-2'
+
+    const box = new Box('region-1', 'ro-restart')
+    box.runnerId = runnerId
+    box.state = BoxState.STOPPED
+    box.desiredState = BoxDesiredState.STARTED
+    box.pending = true
+    box.volumes = [{ volumeId: 'vol-1', mountPath: '/data', subpath: 'sets/a', readOnly: true }]
+
+    const runner = { id: runnerId, state: RunnerState.READY } as Runner
+    const runnerService = { findOneOrFail: jest.fn(async () => runner) }
+    const startBox = jest.fn(async (_id: string, _token: string, _metadata?: { [key: string]: string }) => undefined)
+    const runnerAdapterFactory = { create: jest.fn(async () => ({ startBox }) as any) }
+    const lockCode = new LockCode('lock-own-2')
+    const boxRepository = { update: jest.fn(async () => box) }
+    const redisLockProvider = { getCode: jest.fn(async () => lockCode) }
+    const organizationService = { findOne: jest.fn(async () => ({ boxMetadata: {} })) }
+
+    const action = new BoxStartAction(
+      runnerService as any,
+      runnerAdapterFactory as any,
+      boxRepository as any,
+      organizationService as any,
+      {} as any,
+      redisLockProvider as any,
+      {} as any,
+    )
+
+    await (action as BoxAction).run(box, lockCode)
+
+    const metadata = startBox.mock.calls[0][2] ?? {}
+    expect(JSON.parse(metadata['volumes'])).toEqual([
+      { volumeId: 'vol-1', mountPath: '/data', subpath: 'sets/a', readOnly: true },
+    ])
+  })
+
   it('moves a stopped box with no runner to ERROR (cross-runner recovery is not supported)', async () => {
     const box = new Box('region-1', 'orphan-box')
     box.runnerId = null
