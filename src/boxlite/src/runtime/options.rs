@@ -748,7 +748,7 @@ pub struct VolumeSpec {
     /// it exists are the server's to answer, so an SDK caller learns about a
     /// malformed prefix from the create response. The CLI checks it earlier
     /// because it can report the failure before a request is built.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub sub_path: String,
 
     /// Mount without write access.
@@ -1169,6 +1169,38 @@ mod tests {
         ContainerCapabilities, NetworkRateLimit, SecurityOptions, SecurityOptionsBuilder,
     };
     use crate::runtime::types::Bytes;
+
+    /// `VolumeSpec` is persisted as box config, so its JSON shape is a contract
+    /// with every box already on disk. An empty `sub_path` means the whole
+    /// volume, exactly as its absence does: it is not written, and a row with
+    /// the key, without it, or with `""` all load the same spec.
+    #[test]
+    fn volume_spec_sub_path_round_trips_without_an_empty_key() {
+        let whole = VolumeSpec::managed_volume("run42", "/work");
+        let json = serde_json::to_value(&whole).unwrap();
+        assert!(
+            json.get("sub_path").is_none(),
+            "an empty sub_path must not be persisted: {json}"
+        );
+
+        let prefixed = VolumeSpec {
+            sub_path: "agents/extract".to_string(),
+            ..VolumeSpec::managed_volume("run42", "/work")
+        };
+        let json = serde_json::to_value(&prefixed).unwrap();
+        assert_eq!(json["sub_path"], "agents/extract");
+
+        // Rows written before the field existed, rows written with it empty,
+        // and rows written by this code must all load as the whole volume.
+        for row in [
+            r#"{"managed_volume":"run42","guest_path":"/work","read_only":false}"#,
+            r#"{"managed_volume":"run42","guest_path":"/work","sub_path":"","read_only":false}"#,
+        ] {
+            let spec: VolumeSpec = serde_json::from_str(row).unwrap();
+            assert_eq!(spec.sub_path, "", "{row}");
+            assert_eq!(spec.managed_volume.as_deref(), Some("run42"));
+        }
+    }
 
     /// A host bind reaches the sub-directory by naming it, so a spec that sets
     /// both is two spellings of one mount and is refused rather than resolved
