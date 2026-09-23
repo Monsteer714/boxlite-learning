@@ -1299,9 +1299,10 @@ fn parse_port(s: &str) -> anyhow::Result<u16> {
 
 #[derive(Args, Debug, Clone)]
 pub struct VolumeFlags {
-    /// Mount a volume: VOLUME:BOX_PATH for a managed volume, HOST_PATH:BOX_PATH[:options]
-    /// for a host bind (host paths start with `/`, `./`, `~` or a drive letter), or
-    /// BOX_PATH[:options] for an anonymous volume
+    /// Mount a volume: VOLUME:BOX_PATH[:options] for a managed volume,
+    /// HOST_PATH:BOX_PATH[:options] for a host bind (host paths start with `/`, `./`,
+    /// `~` or a drive letter), or BOX_PATH[:options] for an anonymous volume.
+    /// Options are `ro`, `rw` and `subpath=PREFIX`, comma-separated
     #[arg(short = 'v', long = "volume", value_name = "VOLUME")]
     pub volume: Vec<String>,
 }
@@ -1378,6 +1379,7 @@ impl VolumeFlags {
 
             opts.volumes.push(VolumeSpec {
                 read_only: mount.read_only,
+                sub_path: mount.sub_path,
                 ..spec
             });
         }
@@ -2567,6 +2569,23 @@ mod tests {
         assert_eq!(opts.volumes.len(), 1);
         assert_eq!(opts.volumes[0].managed_volume.as_deref(), Some("my-data"));
         assert_eq!(opts.volumes[0].guest_path, "/data");
+        assert!(opts.volumes[0].read_only);
+    }
+
+    /// `subpath=` rides along with the managed volume reference; the server
+    /// resolves the prefix, the CLI only carries it.
+    #[test]
+    fn test_volume_flags_carry_subpath_for_managed_volume() {
+        let flags = VolumeFlags {
+            volume: vec!["run42:/work:ro,subpath=agents/extract".to_string()],
+        };
+        let mut opts = BoxOptions::default();
+        flags.apply_to(&mut opts, None).unwrap();
+
+        assert_eq!(opts.volumes.len(), 1);
+        assert_eq!(opts.volumes[0].managed_volume.as_deref(), Some("run42"));
+        assert_eq!(opts.volumes[0].guest_path, "/work");
+        assert_eq!(opts.volumes[0].sub_path, "agents/extract");
         assert!(opts.volumes[0].read_only);
     }
 

@@ -87,6 +87,11 @@ export interface JsManagedVolumeSpec {
   /** Managed volume, by server-assigned id or by name — the server resolves either. */
   managedVolume: string;
   guestPath: string;
+  /**
+   * Mount only this prefix of the volume instead of the whole volume.
+   * Relative to the volume root, no `..`. Omitted mounts everything.
+   */
+  subPath?: string;
   /** Mount read-only; the server binds the volume read-only on the runner. Default: false. */
   readOnly?: boolean;
 }

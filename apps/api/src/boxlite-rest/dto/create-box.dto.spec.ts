@@ -230,10 +230,15 @@ describe('CreateBoxDto network validation', () => {
 })
 
 describe('CreateBoxDto managed volumes', () => {
-  function getReadOnlyConstraints(errors: Awaited<ReturnType<typeof validate>>) {
+  // The constraints class-validator recorded on one field of the first volume.
+  function getVolumeConstraints(errors: Awaited<ReturnType<typeof validate>>, field: string) {
     return errors
       .find((error) => error.property === 'volumes')
-      ?.children?.[0]?.children?.find((error) => error.property === 'read_only')?.constraints
+      ?.children?.[0]?.children?.find((error) => error.property === field)?.constraints
+  }
+
+  function getReadOnlyConstraints(errors: Awaited<ReturnType<typeof validate>>) {
+    return getVolumeConstraints(errors, 'read_only')
   }
 
   it('accepts a managed volume mount by id and by name', async () => {
@@ -317,6 +322,29 @@ describe('CreateBoxDto managed volumes', () => {
     )
 
     expect(getReadOnlyConstraints(errors)).toHaveProperty('isBoolean')
+  })
+
+  it('accepts a managed volume mount with a sub_path', async () => {
+    const errors = await validate(
+      plainToInstance(CreateBoxDto, {
+        volumes: [{ managed_volume: 'run42', guest_path: '/work', sub_path: 'agents/extract' }],
+      }),
+    )
+
+    expect(errors).toHaveLength(0)
+  })
+
+  // The prefix reaches the volume service as a string and is checked there
+  // (validateSubpaths). A non-string would never get that far, so the shape
+  // is refused at the boundary rather than deeper in.
+  it('rejects a non-string sub_path', async () => {
+    const errors = await validate(
+      plainToInstance(CreateBoxDto, {
+        volumes: [{ managed_volume: 'run42', guest_path: '/work', sub_path: 7 }],
+      }),
+    )
+
+    expect(getVolumeConstraints(errors, 'sub_path')).toHaveProperty('isString')
   })
 
   it('rejects a non-boolean read_only value', async () => {

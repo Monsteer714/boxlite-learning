@@ -169,6 +169,10 @@ export class VolumeSpecDto {
   @IsString()
   guest_path: string
 
+  @ValidateIf((_, value) => value !== undefined)
+  @IsString()
+  sub_path?: string
+
   /**
    * Mount the volume read-only. The runner binds the volume's FUSE mount into
    * the box as a read-only bind, so files under the mount can be read but not

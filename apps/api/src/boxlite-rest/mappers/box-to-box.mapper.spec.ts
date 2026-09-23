@@ -49,6 +49,26 @@ describe('BoxLite lifecycle policy mapper', () => {
     expect(mapped.volumes).toEqual([{ volumeId: 'volume-123', mountPath: '/data', readOnly: true }])
   })
 
+  it('carries sub_path through as subpath', () => {
+    const mapped = createBoxToCreateBox({
+      volumes: [{ managed_volume: 'run42', guest_path: '/work', sub_path: 'agents/extract' }],
+    })
+
+    expect(mapped.volumes).toEqual([
+      { volumeId: 'run42', mountPath: '/work', subpath: 'agents/extract', readOnly: undefined },
+    ])
+  })
+
+  // An absent prefix is the whole volume; it must not reach the runner as an
+  // empty string, which would be a prefix the volume does not have.
+  it('leaves subpath undefined when sub_path is omitted', () => {
+    const mapped = createBoxToCreateBox({
+      volumes: [{ managed_volume: 'run42', guest_path: '/work' }],
+    })
+
+    expect(mapped.volumes?.[0].subpath).toBeUndefined()
+  })
+
   it('leaves readOnly undefined when read_only is omitted', () => {
     const mapped = createBoxToCreateBox({
       volumes: [{ managed_volume: 'volume-123', guest_path: '/data' }],

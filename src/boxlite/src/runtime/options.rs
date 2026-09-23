@@ -740,6 +740,17 @@ pub struct VolumeSpec {
     /// Mount point inside the box.
     pub guest_path: String,
 
+    /// Prefix inside a managed volume to mount instead of the whole volume.
+    /// Empty mounts everything.
+    ///
+    /// Only the shape rules that do not depend on the volume live here (see
+    /// [`VolumeSpec::validate`]); whether the prefix is a legal key and whether
+    /// it exists are the server's to answer, so an SDK caller learns about a
+    /// malformed prefix from the create response. The CLI checks it earlier
+    /// because it can report the failure before a request is built.
+    #[serde(default)]
+    pub sub_path: String,
+
     /// Mount without write access.
     pub read_only: bool,
 }
@@ -751,6 +762,7 @@ impl VolumeSpec {
             managed_volume: None,
             host_path: host_path.into(),
             guest_path: guest_path.into(),
+            sub_path: String::new(),
             read_only: false,
         }
     }
@@ -761,6 +773,7 @@ impl VolumeSpec {
             managed_volume: Some(volume.into()),
             host_path: String::new(),
             guest_path: guest_path.into(),
+            sub_path: String::new(),
             read_only: false,
         }
     }
@@ -771,6 +784,14 @@ impl VolumeSpec {
     /// shape, so this runs at create rather than only in the constructors.
     pub fn validate(&self) -> BoxliteResult<()> {
         let guest_path = &self.guest_path;
+        if !self.sub_path.is_empty() && !self.host_path.is_empty() {
+            return Err(boxlite_shared::errors::BoxliteError::InvalidArgument(
+                format!(
+                    "volume mount {guest_path:?} sets both host_path and sub_path; \
+                     a host bind names its sub-directory directly"
+                ),
+            ));
+        }
         match &self.managed_volume {
             Some(volume) if !self.host_path.is_empty() => Err(
                 boxlite_shared::errors::BoxliteError::InvalidArgument(format!(
@@ -1148,6 +1169,31 @@ mod tests {
         ContainerCapabilities, NetworkRateLimit, SecurityOptions, SecurityOptionsBuilder,
     };
     use crate::runtime::types::Bytes;
+
+    /// A host bind reaches the sub-directory by naming it, so a spec that sets
+    /// both is two spellings of one mount and is refused rather than resolved
+    /// to one of them. FFI callers can build this shape, so the check lives in
+    /// `validate` and not only in the constructors.
+    #[test]
+    fn volume_spec_refuses_a_sub_path_on_a_host_bind() {
+        let spec = VolumeSpec {
+            sub_path: "agents/extract".to_string(),
+            ..VolumeSpec::bind_mount("/host/data", "/work")
+        };
+
+        let error = spec.validate().expect_err("a host bind takes no sub_path");
+        let message = error.to_string();
+        assert!(message.contains("host_path and sub_path"), "{message}");
+        assert!(message.contains("/work"), "{message}");
+
+        // The same prefix on a managed volume is the supported shape.
+        VolumeSpec {
+            sub_path: "agents/extract".to_string(),
+            ..VolumeSpec::managed_volume("run42", "/work")
+        }
+        .validate()
+        .expect("a managed volume takes a sub_path");
+    }
 
     #[test]
     fn legacy_ports_keep_old_same_port_and_last_write_wins_semantics() {
@@ -1883,6 +1929,7 @@ mod tests {
                 managed_volume: Some("my-data".into()),
                 host_path: "/tmp/data".into(),
                 guest_path: "/data".into(),
+                sub_path: String::new(),
                 read_only: false,
             }],
             ..Default::default()

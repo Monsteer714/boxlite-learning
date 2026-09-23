@@ -242,6 +242,53 @@ func TestWithManagedVolumeReadOnlySetsReadOnlyOnAManagedOrigin(t *testing.T) {
 	}
 }
 
+// WithManagedVolumeMount is the one entry point that carries every managed
+// mount option, so a sub-path and read-only travel together on one origin.
+func TestWithManagedVolumeMountCarriesSubPathAndMode(t *testing.T) {
+	cfg := &boxConfig{}
+	WithManagedVolumeMount(ManagedVolumeMount{
+		Volume:    "run42",
+		GuestPath: "/work",
+		SubPath:   "agents/extract",
+		ReadOnly:  true,
+	})(cfg)
+	WithManagedVolumeMount(ManagedVolumeMount{Volume: "run42", GuestPath: "/all"})(cfg)
+
+	if len(cfg.volumes) != 2 {
+		t.Fatalf("volumes: got %d", len(cfg.volumes))
+	}
+	prefix := cfg.volumes[0]
+	if prefix.managedVolume != "run42" || prefix.hostPath != "" ||
+		prefix.guestPath != "/work" || prefix.subPath != "agents/extract" || !prefix.readOnly {
+		t.Errorf("prefix mount: got managedVolume=%q hostPath=%q guestPath=%q subPath=%q readOnly=%v",
+			prefix.managedVolume, prefix.hostPath, prefix.guestPath, prefix.subPath, prefix.readOnly)
+	}
+	// An omitted SubPath mounts the whole volume, not a prefix named "".
+	whole := cfg.volumes[1]
+	if whole.subPath != "" || whole.readOnly {
+		t.Errorf("whole-volume mount: got subPath=%q readOnly=%v", whole.subPath, whole.readOnly)
+	}
+}
+
+// A SubPath sends buildCOptions down a different C entry point than a plain
+// managed volume. The config-level test above stops at volumeEntry, so only
+// this reaches the branch; the options handle is opaque to Go, so a mistake in
+// it (wrong pointer, double free) surfaces here as a crash rather than a wrong
+// value. Both spellings are built so neither branch is left unexercised.
+func TestBuildCOptionsAcceptsAManagedVolumeMountWithAndWithoutASubPath(t *testing.T) {
+	for _, mount := range []ManagedVolumeMount{
+		{Volume: "run42", GuestPath: "/work", SubPath: "agents/extract", ReadOnly: true},
+		{Volume: "run42", GuestPath: "/all"},
+	} {
+		cfg := &boxConfig{}
+		WithManagedVolumeMount(mount)(cfg)
+
+		if err := buildAndFreeCOptions("alpine:latest", cfg); err != nil {
+			t.Fatalf("SubPath=%q: buildCOptions must apply cleanly; got error: %v", mount.SubPath, err)
+		}
+	}
+}
+
 func TestBoxOptions(t *testing.T) {
 	cfg := &boxConfig{}
 	WithName("test-box")(cfg)
