@@ -52,7 +52,7 @@ import { createRangeFilter } from '../../common/utils/range-filter'
 import { LogExecution } from '../../common/decorators/log-execution.decorator'
 import { customAlphabet as customNanoid, nanoid, urlAlphabet } from 'nanoid'
 import { WithInstrumentation } from '../../common/decorators/otel.decorator'
-import { validateMountPaths, validateSubpaths } from '../utils/volume-mount-path-validation.util'
+import { validateMountPaths, validateReadOnlyFlags, validateSubpaths } from '../utils/volume-mount-path-validation.util'
 import { BoxRepository } from '../repositories/box.repository'
 import { Job } from '../entities/job.entity'
 import { JobService } from './job.service'
@@ -1548,6 +1548,12 @@ export class BoxService {
       validateSubpaths(volumes)
     } catch (error) {
       throw new BadRequestError(error instanceof Error ? error.message : 'Invalid volume subpath configuration')
+    }
+
+    try {
+      validateReadOnlyFlags(volumes)
+    } catch (error) {
+      throw new BadRequestError(error instanceof Error ? error.message : 'Invalid volume readOnly configuration')
     }
 
     return volumes
