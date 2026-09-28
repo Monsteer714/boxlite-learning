@@ -97,13 +97,6 @@ fn options_from_manifest(
     options.sanitize().map_err(|error| {
         BoxliteError::InvalidArgument(format!("invalid archive box_options: {error}"))
     })?;
-    // Import does not keep typed mounts yet(TODO), so an archive that carries
-    // one is refused rather than stored.
-    if !options.mounts.is_empty() {
-        return Err(BoxliteError::Unsupported(
-            "importing an archive with typed mounts is not supported yet".to_string(),
-        ));
-    }
 
     if policy == ArchiveImportPolicy::Trusted {
         return Ok(options);
@@ -127,6 +120,11 @@ fn options_from_manifest(
     // uploaded archive would also select storage the uploader does not own.
     if !options.volumes.is_empty() {
         return Err(rejected_upload("volume mounts"));
+    }
+    // Typed mounts, for the same reasons: a `bind` would select a path on the
+    // server's host, a `volume` storage the uploader does not necessarily own.
+    if !options.mounts.is_empty() {
+        return Err(rejected_upload("mounts"));
     }
     options.advanced.security = SecurityOptions::default();
     // That reset also restores the default's hardcoded 1 GiB RLIMIT_FSIZE —
@@ -420,29 +418,53 @@ mod tests {
         assert!(error.to_string().contains("volume mounts"));
     }
 
-    /// Import does not keep typed mounts yet, so an archive that carries one is
-    /// refused whoever imports it, rather than stored.
+    /// The typed mounts pass through the same gate, both types of them: a
+    /// `bind` names a path on the server's host, a `volume` storage the
+    /// uploader does not necessarily own.
     #[test]
-    fn import_refuses_typed_mounts_until_import_keeps_them() {
+    fn untrusted_import_rejects_every_mount_type() {
         use crate::runtime::options::MountSpec;
 
-        for policy in [
-            ArchiveImportPolicy::Trusted,
-            ArchiveImportPolicy::UntrustedRemote,
+        for mount in [
+            MountSpec::bind_mount("/", "/host"),
+            MountSpec::volume_mount("someone-elses-data", "/data"),
         ] {
             let options = BoxOptions {
-                mounts: vec![MountSpec::bind_mount("/srv/data", "/data")],
+                mounts: vec![mount.clone()],
                 ..Default::default()
             };
 
-            let error = options_from_manifest(&v3_manifest(options), policy)
-                .expect_err("import does not keep typed mounts yet");
+            let error =
+                options_from_manifest(&v3_manifest(options), ArchiveImportPolicy::UntrustedRemote)
+                    .expect_err("untrusted archives must not select mounts");
 
             assert!(
-                error.to_string().contains("typed mounts"),
-                "{policy:?}: {error}"
+                matches!(error, BoxliteError::Unsupported(_)),
+                "{mount:?}: {error:?}"
             );
+            assert!(error.to_string().contains("mounts"), "{mount:?}: {error}");
         }
+    }
+
+    /// A local import is the caller's own archive, so its mounts come back as
+    /// exported, like its volumes.
+    #[test]
+    fn trusted_import_preserves_mounts() {
+        use crate::runtime::options::MountSpec;
+
+        let mounts = vec![MountSpec {
+            read_only: true,
+            ..MountSpec::bind_mount("/srv/data", "/data")
+        }];
+        let options = BoxOptions {
+            mounts: mounts.clone(),
+            ..Default::default()
+        };
+
+        let resolved =
+            options_from_manifest(&v3_manifest(options), ArchiveImportPolicy::Trusted).unwrap();
+
+        assert_eq!(resolved.mounts, mounts);
     }
 
     #[test]
