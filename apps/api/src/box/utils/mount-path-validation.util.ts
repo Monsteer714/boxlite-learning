@@ -48,7 +48,7 @@ export function validateMountSubPaths(mounts: BoxMount[]): void {
     }
 
     // Unlike a volume's `subpath`, an empty string is not a second way to ask
-    // for the whole volume. REST(TODO): refuse it in the create-box DTO too.
+    // for the whole volume; the REST create-box DTO refuses it too.
     // Client(TODO): refuse it in the Rust client too.
     if (subPath === '') {
       errors.push('Invalid sub_path "" (omit sub_path to mount the whole volume)')
