@@ -797,8 +797,9 @@ A runtime refuses the mounts it does not take rather than dropping them; use
 - A REST runtime sends a `Volume` mount in `mounts` and refuses a `Bind`, whose
   path would name the server's filesystem. Unlike a managed `VolumeSpec`, a
   `Volume` mount may be read-only and may name a `sub_path`. No server accepts
-  `mounts` yet, so for now such a create fails with the server's unknown-field
-  error.
+  `mounts` yet: `boxlite serve` refuses such a create with `mounts are not
+  supported by boxlite serve`, and a server without the key fails it with an
+  unknown-field error.
 
 - The local runtime takes no typed mounts yet.
 
