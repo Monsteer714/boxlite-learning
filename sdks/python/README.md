@@ -662,13 +662,13 @@ No runtime accepts `mounts` yet: both refuse a non-empty list at create.
 boxlite.BoxOptions(
     mounts=[
         # A read-only prefix of a managed volume
-        {
-            "type": "volume",
-            "source": "run42",
-            "target": "/workspace",
-            "read_only": True,
-            "sub_path": "foo/bar",
-        },
+        boxlite.Mount(
+            type="volume",
+            source="run42",
+            target="/workspace",
+            read_only=True,
+            sub_path="foo/bar",
+        ),
         # A host directory
         {"type": "bind", "source": "/host/data", "target": "/mnt/data"},
     ]

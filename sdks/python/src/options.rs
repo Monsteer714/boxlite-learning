@@ -909,13 +909,87 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for PyVolumeSpec {
     }
 }
 
+/// A typed mount for `BoxOptions(mounts=[...])`, from the MountSpec design.
+///
+/// Every argument is keyword-only:
+///
+///     Mount(type="volume", source="run42", target="/workspace",
+///           read_only=False, sub_path="foo/bar")
+///
+/// `type` is `"volume"` (a managed volume by id or name) or `"bind"` (a host
+/// path). A dict with the same keys is accepted wherever a `Mount` is. No
+/// runtime takes a mount yet: both refuse a non-empty `mounts` at create.
+#[pyclass(name = "Mount")]
+#[derive(Clone, Debug)]
+pub(crate) struct PyMount {
+    /// `"volume"` or `"bind"`. `type` in Python; a keyword in Rust.
+    #[pyo3(get, set, name = "type")]
+    pub(crate) mount_type: String,
+
+    /// A volume id or name for `"volume"`, a host path for `"bind"`.
+    #[pyo3(get, set)]
+    pub(crate) source: Option<String>,
+
+    /// Mount point inside the box; an absolute path.
+    #[pyo3(get, set)]
+    pub(crate) target: String,
+
+    /// Mount without write access.
+    #[pyo3(get, set)]
+    pub(crate) read_only: bool,
+
+    /// Prefix inside a managed volume to mount instead of the whole volume.
+    /// `None` mounts all of it.
+    #[pyo3(get, set)]
+    pub(crate) sub_path: Option<String>,
+}
+
+#[pymethods]
+impl PyMount {
+    #[new]
+    #[pyo3(signature = (*, r#type, target, source=None, read_only=false, sub_path=None))]
+    fn new(
+        r#type: String,
+        target: String,
+        source: Option<String>,
+        read_only: bool,
+        sub_path: Option<String>,
+    ) -> PyResult<Self> {
+        // Here as well as at conversion, so a misspelt type fails on the line
+        // that wrote it rather than when the box is created.
+        parse_mount_type(&r#type)?;
+        Ok(Self {
+            mount_type: r#type,
+            source,
+            target,
+            read_only,
+            sub_path,
+        })
+    }
+
+    fn __repr__(&self) -> String {
+        let optional = |value: &Option<String>| match value {
+            Some(value) => format!("{value:?}"),
+            None => "None".to_string(),
+        };
+        format!(
+            "Mount(type={:?}, source={}, target={:?}, read_only={}, sub_path={})",
+            self.mount_type,
+            optional(&self.source),
+            self.target,
+            if self.read_only { "True" } else { "False" },
+            optional(&self.sub_path),
+        )
+    }
+}
+
 /// Parse a mount's `type` with the core's spelling rules and message.
 fn parse_mount_type(value: &str) -> PyResult<MountType> {
     value.parse::<MountType>().map_err(crate::util::map_err)
 }
 
 /// One entry of the `mounts=` argument, before it becomes a [`MountSpec`]:
-/// a dict with the MountSpec keys; a `Mount` class is not there yet(TODO).
+/// a [`PyMount`] or a dict with the same keys.
 #[derive(Clone, Debug)]
 pub(crate) struct PyMountSpec {
     mount_type: MountType,
@@ -943,8 +1017,22 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for PyMountSpec {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(mount) = ob.cast::<PyMount>() {
+            let mount = mount.borrow();
+            return Ok(PyMountSpec {
+                // `type` is settable after construction, so it is parsed again.
+                mount_type: parse_mount_type(&mount.mount_type)?,
+                source: mount.source.clone(),
+                target: mount.target.clone(),
+                read_only: mount.read_only,
+                sub_path: mount.sub_path.clone(),
+            });
+        }
+
         let Ok(dict) = ob.cast::<PyDict>() else {
-            return Err(PyRuntimeError::new_err("mounts entries must be dicts"));
+            return Err(PyRuntimeError::new_err(
+                "mounts entries must be Mount or dict",
+            ));
         };
 
         // Unknown keys are an error, not noise: Docker's `readonly` or a
@@ -1547,6 +1635,62 @@ mod tests {
         });
     }
 
+    /// `Mount(...)` is called with keyword arguments from Python, `type=`
+    /// included; `r#type` on the Rust side must surface as `type`. The object
+    /// and the equivalent dict produce the same spec.
+    #[test]
+    fn py_mount_object_matches_the_dict() {
+        Python::attach(|py| {
+            let mount = py
+                .get_type::<PyMount>()
+                .call((), Some(&design_mount_dict(py)))
+                .expect("Mount accepts the design's keyword arguments");
+
+            let spec = MountSpec::from(mount.extract::<PyMountSpec>().unwrap());
+            assert_eq!(spec, design_mount_spec());
+            assert_eq!(
+                mount.getattr("type").unwrap().extract::<String>().unwrap(),
+                "volume"
+            );
+        });
+    }
+
+    /// Every argument is keyword-only, so a positional call cannot silently
+    /// assign a source to the target.
+    #[test]
+    fn py_mount_takes_keyword_arguments_only() {
+        Python::attach(|py| {
+            let error = py
+                .get_type::<PyMount>()
+                .call1(("volume", "/workspace"))
+                .expect_err("positional arguments are refused");
+            assert!(error.is_instance_of::<pyo3::exceptions::PyTypeError>(py));
+        });
+    }
+
+    /// A misspelt type fails where it is written, and a type set to something
+    /// else afterwards still fails before it reaches the core.
+    #[test]
+    fn py_mount_type_is_checked_at_construction_and_at_conversion() {
+        Python::attach(|py| {
+            let kwargs = design_mount_dict(py);
+            kwargs.set_item("type", "volme").unwrap();
+            let error = py
+                .get_type::<PyMount>()
+                .call((), Some(&kwargs))
+                .expect_err("volme is not a mount type");
+            assert!(error.to_string().contains("unknown mount type"), "{error}");
+
+            let mount = py
+                .get_type::<PyMount>()
+                .call((), Some(&design_mount_dict(py)))
+                .unwrap();
+            mount.setattr("type", "tmpfs").unwrap();
+            let error = mount.extract::<PyMountSpec>().unwrap_err();
+            assert!(error.to_string().contains("unknown mount type"), "{error}");
+        });
+    }
+
     /// Unknown keys are refused, including the draft's `mount_type` and
     /// Docker's spellings: dropping `readonly` would hand back a writable mount.
     #[test]
@@ -1600,11 +1744,11 @@ mod tests {
     }
 
     #[test]
-    fn py_mounts_entries_must_be_dicts() {
+    fn py_mounts_entries_must_be_mount_or_dict() {
         Python::attach(|py| {
             let tuple = PyTuple::new(py, ["run42", "/workspace"]).unwrap();
             let error = tuple.extract::<PyMountSpec>().unwrap_err();
-            assert!(error.to_string().contains("must be dicts"), "{error}");
+            assert!(error.to_string().contains("Mount or dict"), "{error}");
         });
     }
 

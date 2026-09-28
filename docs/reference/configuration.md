@@ -291,7 +291,7 @@ volumes=[
 - Guest path is created automatically if missing
 - Changes to `rw` mounts are visible on host immediately
 
-### `mounts: List[Dict]`
+### `mounts: List[Mount | Dict]`
 
 Typed mounts, beside `volumes`. Each names its `type` — `"volume"` for a
 managed volume by id or name, `"bind"` for a host path — plus `source`,
@@ -302,8 +302,10 @@ managed volume by id or name, `"bind"` for a host path — plus `source`,
 
 **Example:**
 ```python
+from boxlite import Mount
+
 mounts=[
-    {"type": "volume", "source": "run42", "target": "/workspace", "read_only": True, "sub_path": "foo/bar"},
+    Mount(type="volume", source="run42", target="/workspace", read_only=True, sub_path="foo/bar"),
     {"type": "bind", "source": "/host/config", "target": "/etc/app/config", "read_only": True},
 ]
 ```
