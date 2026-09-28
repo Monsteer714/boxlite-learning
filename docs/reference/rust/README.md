@@ -786,9 +786,9 @@ let prefix = MountSpec {
 let bind = MountSpec::bind_mount("/tmp/data", "/data");
 ```
 
-`MountType` parses from and displays as `"volume"` and `"bind"` exactly. Only
-the Rust `BoxOptions` carries a `MountSpec`; no CLI flag, other SDK or REST
-request does yet.
+`MountType` parses from and displays as `"volume"` and `"bind"` exactly. The
+Rust `BoxOptions` and the Python SDK's `BoxOptions(mounts=...)` carry a
+`MountSpec`; no CLI flag, other SDK or REST request does yet.
 `MountSpec::validate` refuses a relative `target`, a missing `source`,
 `sub_path` on a `Bind`, and an empty `sub_path`; create runs it for every mount.
 A runtime refuses the mounts it does not take rather than dropping them; use
