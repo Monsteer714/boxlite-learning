@@ -809,8 +809,9 @@ impl VolumeSpec {
 /// What a [`MountSpec`]'s `source` names.
 ///
 /// Spelled `"volume"` and `"bind"` on every surface that carries a mount: the
-/// CLI(TODO), the SDK(TODO), the REST wire(TODO) and persisted box config. One spelling
-/// everywhere is what lets a mount written for one surface be read unchanged on another.
+/// CLI(TODO), the SDK(TODO), the REST wire (sent by the client; no server
+/// accepts it yet(TODO)) and persisted box config. One spelling everywhere is
+/// what lets a mount written for one surface be read unchanged on another.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MountType {
@@ -871,7 +872,8 @@ impl std::str::FromStr for MountType {
 /// [`MountSpec::volume_mount`] or [`MountSpec::bind_mount`].
 ///
 /// `mount_type` is serialized under the key `type`, the spelling the CLI(TODO),
-/// the SDK(TODO) and the wire(TODO) use. `type` is a Rust keyword, hence the field name.
+/// the SDK(TODO) and the REST wire use; no server accepts that wire yet(TODO).
+/// `type` is a Rust keyword, hence the field name.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MountSpec {
     #[serde(rename = "type")]
@@ -1353,7 +1355,7 @@ mod tests {
     }
 
     /// `MountSpec` is persisted as box config and is the shape the SDK(TODO) and
-    /// the wire(TODO) share, so its JSON is a contract: `type` rather than the
+    /// the REST wire share, so its JSON is a contract: `type` rather than the
     /// Rust field name, lowercase type names, and no key for an unset `sub_path`.
     #[test]
     fn mount_spec_json_uses_the_type_key_and_omits_an_unset_sub_path() {
