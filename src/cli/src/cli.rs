@@ -8,7 +8,8 @@ use boxlite::experimental::{
     EXPERIMENTAL_FEATURES_ENV, ExperimentalFeature, ExperimentalFeatures, RuntimeBuilder,
 };
 use boxlite::runtime::options::{
-    InboundNetworkConfig, NetworkMode, OutboundNetworkConfig, PortProtocol, PortSpec, VolumeSpec,
+    InboundNetworkConfig, MountType, NetworkMode, OutboundNetworkConfig, PortProtocol, PortSpec,
+    VolumeSpec,
 };
 use boxlite::{
     BoxCommand, BoxOptions, BoxliteOptions, BoxliteRestOptions, BoxliteRuntime,
@@ -1325,9 +1326,9 @@ fn anonymous_volume_base(home: Option<&std::path::Path>) -> std::path::PathBuf {
 
 /// Make a host bind path absolute.
 ///
-/// `volumespec` classified this as a path without touching the filesystem, so a
-/// relative one is resolved here — the same split Docker uses, where the client
-/// absolutizes and only the resolved path travels on.
+/// `volumespec` and `mountspec` take a host path without touching the
+/// filesystem, so a relative one is resolved here — the same split Docker uses,
+/// where the client absolutizes and only the resolved path travels on.
 fn resolve_host_path(path: String) -> anyhow::Result<String> {
     // A Windows path is absolute even where `Path::is_relative` says otherwise:
     // on Unix `C:\data` has no leading `/`, so without this it would be
@@ -1388,6 +1389,34 @@ impl VolumeFlags {
                 read_only: mount.read_only,
                 ..spec
             });
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// MOUNT FLAGS
+// ============================================================================
+
+#[derive(Args, Debug, Clone)]
+pub struct MountFlags {
+    /// Mount by named fields: type=volume|bind,source=SOURCE,target=BOX_PATH. A
+    /// volume source is a volume id or name, a bind source a host path
+    #[arg(long = "mount", value_name = "MOUNT")]
+    pub mount: Vec<String>,
+}
+
+impl MountFlags {
+    /// Apply `--mount` flags to `opts.mounts`, beside whatever `-v` added to
+    /// `opts.volumes`. A bind source goes through the same resolver as a `-v`
+    /// host path.
+    pub fn apply_to(&self, opts: &mut BoxOptions) -> anyhow::Result<()> {
+        for value in &self.mount {
+            let mut mount = crate::mountspec::parse(value)?;
+            if mount.mount_type == MountType::Bind {
+                mount.source = mount.source.map(resolve_host_path).transpose()?;
+            }
+            opts.mounts.push(mount);
         }
         Ok(())
     }
@@ -2631,6 +2660,38 @@ mod tests {
         assert_eq!(opts.volumes[1].guest_path, "/cache");
         assert!(opts.volumes[1].read_only);
         assert!(opts.volumes[1].host_path.contains("anonymous"));
+    }
+
+    /// A relative bind source is resolved against the working directory, the
+    /// way `-v` resolves a relative host path; a volume source is a name and
+    /// is never resolved.
+    #[test]
+    fn test_mount_flags_resolve_only_a_relative_bind_source() {
+        let flags = MountFlags {
+            mount: vec![
+                "type=bind,source=.,target=/data".to_string(),
+                "type=volume,source=src,target=/workspace".to_string(),
+            ],
+        };
+        let mut opts = BoxOptions::default();
+        flags.apply_to(&mut opts).unwrap();
+
+        let cwd = std::fs::canonicalize(".").unwrap();
+        assert_eq!(opts.mounts[0].source.as_deref(), cwd.to_str());
+        assert_eq!(opts.mounts[1].source.as_deref(), Some("src"));
+    }
+
+    /// A Windows drive path is absolute even where `Path::is_relative` says
+    /// otherwise, so a `--mount` bind source keeps it as written, as `-v` does.
+    #[test]
+    fn test_mount_flags_keep_a_windows_drive_bind_source() {
+        let flags = MountFlags {
+            mount: vec![r"type=bind,source=C:\host\data,target=/data".to_string()],
+        };
+        let mut opts = BoxOptions::default();
+        flags.apply_to(&mut opts).unwrap();
+
+        assert_eq!(opts.mounts[0].source.as_deref(), Some(r"C:\host\data"));
     }
 
     // ─── auth subcommand parse tests ───────────────────────────────────────

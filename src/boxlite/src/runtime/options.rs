@@ -809,7 +809,7 @@ impl VolumeSpec {
 /// What a [`MountSpec`]'s `source` names.
 ///
 /// Spelled `"volume"` and `"bind"` on every surface that carries a mount: the
-/// CLI(TODO), the SDK(TODO), the REST wire(TODO) and persisted box config. One spelling
+/// CLI, the SDK(TODO), the REST wire(TODO) and persisted box config. One spelling
 /// everywhere is what lets a mount written for one surface be read unchanged on another.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -870,7 +870,7 @@ impl std::str::FromStr for MountType {
 /// which field is set; a `MountSpec` states it. Build one with
 /// [`MountSpec::volume_mount`] or [`MountSpec::bind_mount`].
 ///
-/// `mount_type` is serialized under the key `type`, the spelling the CLI(TODO),
+/// `mount_type` is serialized under the key `type`, the spelling the CLI,
 /// the SDK(TODO) and the wire(TODO) use. `type` is a Rust keyword, hence the field name.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MountSpec {
