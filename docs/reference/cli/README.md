@@ -926,10 +926,12 @@ MOUNT := FIELD (',' FIELD)*
 FIELD := 'type=' ('volume' | 'bind')
        | 'source=' SOURCE
        | 'target=' BOX_PATH
+       | 'read_only=' ('true' | 'false')
+       | 'subpath=' PREFIX
 ```
 
 ```bash
-boxlite run --mount type=volume,source=run42,target=/workspace alpine
+boxlite run --mount type=volume,source=run42,target=/workspace,read_only=true,subpath=foo/bar alpine
 boxlite run --mount type=bind,source=./data,target=/data alpine
 ```
 
@@ -938,20 +940,25 @@ boxlite run --mount type=bind,source=./data,target=/data alpine
 | `type` | yes | `volume` mounts a managed volume, `bind` a host path |
 | `source` | yes | For `volume`, the volume's id or name; for `bind`, a host path |
 | `target` | yes | Absolute mount point inside the box |
-
-There is no `read_only` or `subpath` key: a mount is read-write and, for a
-volume, whole.
+| `read_only` | no | `true` mounts without write access; `false`, the default, is read-write |
+| `subpath` | no | For `volume` only: mount just that prefix of the volume |
 
 Fields may come in any order; each key is allowed once. An unknown key, a
 field without `=`, an empty value, or a near-miss spelling such as
-`type=Volume` is an error rather than ignored. Docker's spellings (`src`, `dst`,
-`ro`, `readonly`, `volume-subpath`) are refused the same way, and unlike Docker
-`type` has no default. Values are split on `,` without quoting, so no value can
-contain a comma. A relative `bind` source is resolved against the working
-directory.
+`type=Volume` or `read_only=yes` is an error rather than ignored. Docker's
+spellings (`src`, `dst`, `ro`, `readonly`, `volume-subpath`) are refused the
+same way, and unlike Docker `type` has no default.
+
+`PREFIX` must not start with `/`, contain `..` anywhere, or contain `//`. Those
+are the server's three rules, checked here in the server's words, so a bad
+prefix fails before the request is sent. A `bind` names its sub-directory in
+`source` directly, so `subpath` on one is refused. Values are split on `,`
+without quoting, so no value can contain a comma. A relative `bind` source is
+resolved against the working directory.
 
 `-v` and `--mount` fill separate lists and can be combined. Which runtime takes
-which type is in the [MountSpec reference](../rust/README.md#mountspec).
+which type is in the [MountSpec reference](../rust/README.md#mountspec). Unlike
+a managed volume given to `-v`, a `volume` mount may be `read_only=true`.
 
 ---
 

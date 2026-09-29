@@ -178,7 +178,7 @@ mod tests {
             "boxlite",
             "create",
             "--mount",
-            "type=bind,source=/srv/data,target=/data",
+            "type=bind,source=/srv/data,target=/data,read_only=true",
             "alpine:latest",
         ])
         .expect("create --mount should parse");
@@ -192,7 +192,10 @@ mod tests {
 
         assert_eq!(
             opts.mounts,
-            vec![MountSpec::bind_mount("/srv/data", "/data")]
+            vec![MountSpec {
+                read_only: true,
+                ..MountSpec::bind_mount("/srv/data", "/data")
+            }]
         );
         assert!(opts.volumes.is_empty());
     }
