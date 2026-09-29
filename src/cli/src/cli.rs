@@ -1326,9 +1326,9 @@ fn anonymous_volume_base(home: Option<&std::path::Path>) -> std::path::PathBuf {
 
 /// Make a host bind path absolute.
 ///
-/// `volumespec` and `mountspec` take a host path without touching the
-/// filesystem, so a relative one is resolved here — the same split Docker uses,
-/// where the client absolutizes and only the resolved path travels on.
+/// `volumespec` classified this as a path without touching the filesystem, so a
+/// relative one is resolved here — the same split Docker uses, where the client
+/// absolutizes and only the resolved path travels on.
 fn resolve_host_path(path: String) -> anyhow::Result<String> {
     // A Windows path is absolute even where `Path::is_relative` says otherwise:
     // on Unix `C:\data` has no leading `/`, so without this it would be
@@ -1406,15 +1406,30 @@ pub struct MountFlags {
     pub mount: Vec<String>,
 }
 
+/// Make a relative bind source absolute.
+///
+/// `mountspec` parses without touching the filesystem, so a relative source is
+/// resolved here against the working directory and only the resolved path
+/// travels on, as `-v` does for a host bind.
+fn absolute_bind_source(path: String) -> anyhow::Result<String> {
+    if !std::path::Path::new(&path).is_relative()
+        || crate::volumespec::is_windows_drive_prefix(&path)
+    {
+        return Ok(path);
+    }
+    let absolute = std::fs::canonicalize(&path)
+        .map_err(|e| anyhow::anyhow!("bind mount source {path:?}: {e}"))?;
+    Ok(absolute.to_string_lossy().into_owned())
+}
+
 impl MountFlags {
     /// Apply `--mount` flags to `opts.mounts`, beside whatever `-v` added to
-    /// `opts.volumes`. A bind source goes through the same resolver as a `-v`
-    /// host path.
+    /// `opts.volumes`.
     pub fn apply_to(&self, opts: &mut BoxOptions) -> anyhow::Result<()> {
         for value in &self.mount {
             let mut mount = crate::mountspec::parse(value)?;
             if mount.mount_type == MountType::Bind {
-                mount.source = mount.source.map(resolve_host_path).transpose()?;
+                mount.source = mount.source.map(absolute_bind_source).transpose()?;
             }
             opts.mounts.push(mount);
         }
