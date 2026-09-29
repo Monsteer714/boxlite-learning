@@ -2662,6 +2662,31 @@ mod tests {
         assert!(opts.volumes[1].host_path.contains("anonymous"));
     }
 
+    /// `--mount` fills `opts.mounts` and leaves `opts.volumes` to `-v`, so the
+    /// two flags never rewrite each other's entries.
+    #[test]
+    fn test_mount_flags_apply_to_fills_mounts_not_volumes() {
+        use boxlite::runtime::options::MountSpec;
+
+        let flags = MountFlags {
+            mount: vec![
+                "type=volume,source=run42,target=/workspace".to_string(),
+                "type=bind,source=/srv/data,target=/data".to_string(),
+            ],
+        };
+        let mut opts = BoxOptions::default();
+        flags.apply_to(&mut opts).unwrap();
+
+        assert!(opts.volumes.is_empty());
+        assert_eq!(
+            opts.mounts,
+            vec![
+                MountSpec::volume_mount("run42", "/workspace"),
+                MountSpec::bind_mount("/srv/data", "/data"),
+            ]
+        );
+    }
+
     /// A relative bind source is resolved against the working directory, the
     /// way `-v` resolves a relative host path; a volume source is a name and
     /// is never resolved.
@@ -2692,6 +2717,41 @@ mod tests {
         flags.apply_to(&mut opts).unwrap();
 
         assert_eq!(opts.mounts[0].source.as_deref(), Some(r"C:\host\data"));
+    }
+
+    /// Both commands that build a box accept `--mount`, repeatedly.
+    #[test]
+    fn run_and_create_accept_repeated_mount_flags() {
+        let mounts = [
+            "--mount",
+            "type=volume,source=a,target=/a",
+            "--mount",
+            "type=volume,source=b,target=/b",
+        ];
+
+        let cli = Cli::try_parse_from(
+            ["boxlite", "run"]
+                .into_iter()
+                .chain(mounts)
+                .chain(["alpine"]),
+        )
+        .expect("run should parse");
+        let Commands::Run(run) = cli.command else {
+            panic!("expected Commands::Run");
+        };
+        assert_eq!(run.mount.mount.len(), 2);
+
+        let cli = Cli::try_parse_from(
+            ["boxlite", "create"]
+                .into_iter()
+                .chain(mounts)
+                .chain(["alpine"]),
+        )
+        .expect("create should parse");
+        let Commands::Create(create) = cli.command else {
+            panic!("expected Commands::Create");
+        };
+        assert_eq!(create.mount.mount.len(), 2);
     }
 
     // ─── auth subcommand parse tests ───────────────────────────────────────

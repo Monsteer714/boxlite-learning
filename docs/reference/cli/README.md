@@ -391,7 +391,7 @@ implicitly, because starting it runs that command. Start it deliberately with
 | `--workdir PATH` | `-w` | Working directory inside the box |
 | `--entrypoint EXEC` | — | Replace the image entrypoint with one executable |
 
-Also uses [`CapabilityFlags`](#capabilityflags) + [`ResourceFlags`](#resourceflags) + [`PublishFlags`](#publishflags) + [`VolumeFlags`](#volumeflags) + [`NetworkFlags`](#networkflags) + [`ManagementFlags`](#managementflags).
+Also uses [`CapabilityFlags`](#capabilityflags) + [`ResourceFlags`](#resourceflags) + [`PublishFlags`](#publishflags) + [`VolumeFlags`](#volumeflags) + [`MountFlags`](#mountflags) + [`NetworkFlags`](#networkflags) + [`ManagementFlags`](#managementflags).
 
 > Note: `create` accepts `--env` and `--workdir` directly rather than via `ProcessFlags` (no `-i`/`-t`/`-u` here, since no command is being executed).
 
@@ -810,7 +810,7 @@ Used by `run` and `create` (defined in `src/cli/src/cli.rs`).
 
 ### `MountFlags`
 
-Used by `run` (defined in `src/cli/src/cli.rs`).
+Used by `run` and `create` (defined in `src/cli/src/cli.rs`).
 
 | Flag | Short | Description |
 |------|-------|-------------|
