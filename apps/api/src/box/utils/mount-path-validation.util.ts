@@ -28,10 +28,10 @@ export function validateMountTargets(mounts: BoxMount[]): void {
  * @throws Error listing every invalid prefix
  */
 export function validateMountSubPaths(mounts: BoxMount[]): void {
-  // CLI(TODO): mirror the three key rules, and each parenthetical reason
-  // verbatim, in src/cli/src/mountspec.rs (validate_mount_sub_path) so a bad
-  // prefix fails before a request is built. Once it does, change one and the
-  // other has to follow, or the CLI starts accepting prefixes this rejects.
+  // src/cli/src/mountspec.rs (validate_mount_sub_path) mirrors the three key
+  // rules and each parenthetical reason verbatim, so a bad prefix fails before
+  // the CLI builds a request. Change one and the other has to follow, or the
+  // CLI starts accepting prefixes this rejects.
   const errors: string[] = []
 
   for (const mount of mounts) {

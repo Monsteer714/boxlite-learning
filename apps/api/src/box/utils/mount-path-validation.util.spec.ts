@@ -57,9 +57,8 @@ describe('mount sub_path validation', () => {
   })
 
   // Pinning each parenthetical reason means changing a rule or its wording
-  // fails this test. CLI(TODO): once src/cli/src/mountspec.rs
-  // (validate_mount_sub_path) mirrors these reasons, that failure is the
-  // signal to change the CLI too.
+  // fails this test, which is the signal to change the CLI's copy in
+  // src/cli/src/mountspec.rs (validate_mount_sub_path) too.
   it.each([
     ['/absolute', 'Invalid sub_path "/absolute" (S3 key prefixes cannot start with /)'],
     ['a/../b', 'Invalid sub_path "a/../b" (cannot contain .. for security)'],

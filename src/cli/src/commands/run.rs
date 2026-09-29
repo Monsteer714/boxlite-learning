@@ -300,9 +300,9 @@ mod tests {
             "-v",
             "/srv/in:/in",
             "--mount",
-            "type=volume,source=run42,target=/workspace",
+            "type=volume,source=run42,target=/workspace,subpath=foo/bar",
             "--mount",
-            "type=bind,source=/srv/data,target=/data",
+            "type=bind,source=/srv/data,target=/data,read_only=true",
             "alpine:latest",
         ])
         .expect("run --mount should parse");
@@ -317,8 +317,14 @@ mod tests {
         assert_eq!(
             opts.mounts,
             vec![
-                MountSpec::volume_mount("run42", "/workspace"),
-                MountSpec::bind_mount("/srv/data", "/data"),
+                MountSpec {
+                    sub_path: Some("foo/bar".to_string()),
+                    ..MountSpec::volume_mount("run42", "/workspace")
+                },
+                MountSpec {
+                    read_only: true,
+                    ..MountSpec::bind_mount("/srv/data", "/data")
+                },
             ]
         );
         assert_eq!(opts.volumes.len(), 1);

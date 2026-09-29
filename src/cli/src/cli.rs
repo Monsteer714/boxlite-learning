@@ -1412,7 +1412,8 @@ impl VolumeFlags {
 
 #[derive(Args, Debug, Clone)]
 pub struct MountFlags {
-    /// Mount by named fields: type=volume|bind,source=SOURCE,target=BOX_PATH. A
+    /// Mount by named fields: type=volume|bind,source=SOURCE,target=BOX_PATH,
+    /// optionally read_only=true|false and, for a volume, subpath=PREFIX. A
     /// volume source is a volume id or name, a bind source a host path
     #[arg(long = "mount", value_name = "MOUNT")]
     pub mount: Vec<String>,
@@ -2690,7 +2691,8 @@ mod tests {
 
         let flags = MountFlags {
             mount: vec![
-                "type=volume,source=run42,target=/workspace".to_string(),
+                "type=volume,source=run42,target=/workspace,read_only=true,subpath=foo/bar"
+                    .to_string(),
                 "type=bind,source=/srv/data,target=/data".to_string(),
             ],
         };
@@ -2701,7 +2703,11 @@ mod tests {
         assert_eq!(
             opts.mounts,
             vec![
-                MountSpec::volume_mount("run42", "/workspace"),
+                MountSpec {
+                    read_only: true,
+                    sub_path: Some("foo/bar".to_string()),
+                    ..MountSpec::volume_mount("run42", "/workspace")
+                },
                 MountSpec::bind_mount("/srv/data", "/data"),
             ]
         );
