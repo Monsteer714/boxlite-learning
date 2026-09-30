@@ -19,7 +19,7 @@ import {
 import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis'
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg'
 import { KafkaJsInstrumentation } from '@opentelemetry/instrumentation-kafkajs'
-import { getTelemetryServiceType } from './common/utils/app-mode'
+import { getServiceType } from './common/utils/app-mode'
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api'
 import { hostname } from 'os'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -32,7 +32,7 @@ import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 // Enable OpenTelemetry diagnostics
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.WARN)
 
-const serviceNameSuffix = getTelemetryServiceType()
+const serviceNameSuffix = getServiceType()
 
 const otlpExporterConfig = {
   keepAlive: true,
