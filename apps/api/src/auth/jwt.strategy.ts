@@ -15,6 +15,7 @@ import { Request } from 'express'
 import { CustomHeaders } from '../common/constants/header.constants'
 import { TypedConfigService } from '../config/typed-config.service'
 import { EmailVerificationRequiredException } from '../exceptions/email-verification-required.exception'
+import { LoginEventRecorder } from './login-event.recorder'
 
 interface JwtStrategyConfig {
   jwksUri: string
@@ -50,6 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly options: JwtStrategyConfig,
     private readonly userService: UserService,
     private readonly configService: TypedConfigService,
+    private readonly loginEvents: LoginEventRecorder,
   ) {
     super({
       secretOrKeyProvider: passportJwtSecret({
@@ -119,6 +121,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       })
       this.logger.debug(`Updated email address for existing user with ID: ${userId}`)
     }
+
+    await this.loginEvents.recordFirstUse(user.id, payload)
 
     const organizationId = request.get(CustomHeaders.ORGANIZATION_ID.name)
 
