@@ -20,12 +20,10 @@ interface BusinessEventBase {
 
 export type BusinessEvent =
   | (BusinessEventBase & { outcome: 'requested' | 'success' })
-  | (BusinessEventBase & { outcome: 'exception'; exceptionType: string; exceptionMessage?: string })
-
-// Error text is unbounded (runner errors can carry whole stack traces), and
-// every log attribute is stored as one ClickHouse string, so cap what one
-// record can carry.
-const MAX_EXCEPTION_MESSAGE_LENGTH = 1024
+  // A failure carries only its category: raw error text (runner job errors,
+  // database constraint messages) can hold secrets or user data, and these
+  // records feed alert labels and Slack messages.
+  | (BusinessEventBase & { outcome: 'exception'; exceptionType: string })
 
 const logger = new Logger('BusinessEvent')
 
@@ -62,9 +60,6 @@ function toLogAttributes(event: BusinessEvent): Record<string, string> {
   }
   if (event.outcome === 'exception') {
     attributes['exception.type'] = event.exceptionType
-    if (event.exceptionMessage) {
-      attributes['exception.message'] = event.exceptionMessage.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH)
-    }
   }
 
   return attributes
