@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-describe('getTelemetryServiceType', () => {
+describe('getServiceType', () => {
   const originalAppMode = process.env.APP_MODE
 
   afterEach(() => {
@@ -23,8 +23,8 @@ describe('getTelemetryServiceType', () => {
     }
     let serviceType = ''
     await jest.isolateModulesAsync(async () => {
-      const { getTelemetryServiceType } = await import('./app-mode')
-      serviceType = getTelemetryServiceType()
+      const { getServiceType } = await import('./app-mode')
+      serviceType = getServiceType()
     })
     return serviceType
   }

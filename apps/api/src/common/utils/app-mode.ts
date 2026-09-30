@@ -36,6 +36,6 @@ export function isWorkerEnabled(): boolean {
  * Returns the component this process reports to telemetry as. `all` runs the
  * API and the worker in one process, which reports as the API.
  */
-export function getTelemetryServiceType(): 'api' | 'worker' {
+export function getServiceType(): 'api' | 'worker' {
   return appMode === 'worker' ? 'worker' : 'api'
 }
