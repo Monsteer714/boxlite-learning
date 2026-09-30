@@ -916,7 +916,11 @@ export class BoxService {
     await this.redis.del(lockKey)
   }
 
-  async destroy(boxIdOrName: string, organizationId?: string): Promise<Box> {
+  async destroy(
+    boxIdOrName: string,
+    organizationId: string | undefined,
+    actorKind: BusinessEventActorKind,
+  ): Promise<Box> {
     const box = await this.findOneByIdOrName(boxIdOrName, organizationId)
 
     if (box.pending) {
@@ -928,6 +932,14 @@ export class BoxService {
     const updatedBox = await this.boxRepository.updateWhere(box.id, {
       updateData,
       whereCondition: { pending: box.pending, state: box.state },
+    })
+
+    recordBusinessEvent({
+      name: 'box.delete',
+      outcome: 'requested',
+      correlationId: updatedBox.id,
+      orgId: updatedBox.organizationId,
+      actorKind,
     })
 
     this.eventEmitter.emit(BoxEvents.DESTROYED, new BoxDestroyedEvent(updatedBox))
@@ -1487,7 +1499,7 @@ export class BoxService {
       return
     }
 
-    const destroyPromises = boxes.map((box) => this.destroy(box.id))
+    const destroyPromises = boxes.map((box) => this.destroy(box.id, undefined, 'warm_pool'))
     const results = await Promise.allSettled(destroyPromises)
 
     // Log any failed box destructions

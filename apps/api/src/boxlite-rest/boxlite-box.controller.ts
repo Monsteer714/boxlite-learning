@@ -178,7 +178,7 @@ export class BoxliteBoxController {
     targetIdFromRequest: (req) => req.params.boxId,
   })
   async removeBox(@AuthContext() authContext: OrganizationAuthContext, @Param('boxId') boxId: string) {
-    await this.boxService.destroy(boxId, authContext.organizationId)
+    await this.boxService.destroy(boxId, authContext.organizationId, 'user')
   }
 
   @Post(':boxId/start')

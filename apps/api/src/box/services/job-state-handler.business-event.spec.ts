@@ -54,6 +54,19 @@ describe('JobStateHandlerService business events', () => {
     })
   })
 
+  it('records a completed DESTROY_BOX job as a box.delete success', async () => {
+    const service = makeService(BoxDesiredState.DESTROYED)
+
+    await service.handleJobCompletion(job(JobType.DESTROY_BOX, JobStatus.COMPLETED))
+
+    expect(recordBusinessEvent).toHaveBeenCalledWith({
+      name: 'box.delete',
+      outcome: 'success',
+      correlationId: 'box-1',
+      orgId: 'org-1',
+    })
+  })
+
   // Top-up stock has no requested event; its box.create pair is recorded when it is claimed.
   it('records nothing for a warm-pool top-up CREATE_BOX job', async () => {
     const service = makeService(
