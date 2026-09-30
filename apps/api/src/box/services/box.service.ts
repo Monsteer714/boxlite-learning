@@ -49,6 +49,7 @@ import {
   DEFAULT_BOX_SORT_DIRECTION,
 } from '../dto/list-boxes-query.dto'
 import { createRangeFilter } from '../../common/utils/range-filter'
+import { BusinessEventActorKind, recordBusinessEvent } from '../../common/utils/business-event.util'
 import { LogExecution } from '../../common/decorators/log-execution.decorator'
 import { customAlphabet as customNanoid, nanoid, urlAlphabet } from 'nanoid'
 import { WithInstrumentation } from '../../common/decorators/otel.decorator'
@@ -95,6 +96,8 @@ const TERMINAL_PREVIEW_PORT = 22222
 
 export type BoxCreationOptions = {
   maxCreatedBoxes?: number
+  // Who asked for the box, recorded on its box.create business events.
+  actorKind?: BusinessEventActorKind
 }
 
 @Injectable()
@@ -252,7 +255,7 @@ export class BoxService {
           })
 
           if (warmPoolBox) {
-            return await this.assignWarmPoolBox(warmPoolBox, createBoxDto, organization, options.maxCreatedBoxes)
+            return await this.assignWarmPoolBox(warmPoolBox, createBoxDto, organization, options)
           }
         }
       }
@@ -323,6 +326,14 @@ export class BoxService {
             }),
       )
 
+      recordBusinessEvent({
+        name: 'box.create',
+        outcome: 'requested',
+        correlationId: insertedBox.id,
+        orgId: insertedBox.organizationId,
+        actorKind: options.actorKind,
+      })
+
       this.eventEmitter
         .emitAsync(BoxEvents.CREATED, new BoxCreatedEvent(insertedBox))
         .catch((err) => this.logger.error('Failed to emit BoxCreatedEvent', err))
@@ -345,8 +356,9 @@ export class BoxService {
     warmPoolBox: Box,
     createBoxDto: CreateBoxDto,
     organization: Organization,
-    maxCreatedBoxes?: number,
+    options: BoxCreationOptions,
   ): Promise<BoxDto> {
+    const { maxCreatedBoxes } = options
     const now = new Date()
     const updateData: Partial<Box> = {
       // POL-205: same default as the fresh-box path — see the comment there.
@@ -402,6 +414,17 @@ export class BoxService {
       name: warmPoolBox.name,
       previousOrganizationId: BOX_WARM_POOL_UNASSIGNED_ORGANIZATION,
     })
+
+    // A claimed warm box is already started, so the request and its success
+    // commit together.
+    const createEvent = {
+      name: 'box.create',
+      correlationId: updatedBox.id,
+      orgId: organization.id,
+      actorKind: options.actorKind,
+    } as const
+    recordBusinessEvent({ ...createEvent, outcome: 'requested' })
+    recordBusinessEvent({ ...createEvent, outcome: 'success' })
 
     // Treat this as a newly started box
     this.eventEmitter.emit(
