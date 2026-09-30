@@ -77,7 +77,6 @@ export class UserService {
           ...registration,
           outcome: 'exception',
           exceptionType: error?.code === PG_UNIQUE_VIOLATION ? 'user_conflict' : 'internal',
-          exceptionMessage: error instanceof Error ? error.message : String(error),
         })
       }
       throw error

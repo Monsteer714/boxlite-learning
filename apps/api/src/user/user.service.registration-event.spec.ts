@@ -46,7 +46,6 @@ describe('UserService registration events', () => {
       correlationId: 'user-1',
       actorKind: 'user',
       exceptionType: 'user_conflict',
-      exceptionMessage: 'duplicate key value violates unique constraint',
     })
     expect(recordBusinessEvent).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: 'success' }))
   })
