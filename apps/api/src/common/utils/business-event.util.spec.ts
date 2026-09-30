@@ -52,20 +52,19 @@ describe('recordBusinessEvent', () => {
     expect(attributes).not.toHaveProperty('exception.type')
   })
 
-  it('logs an exception event at error level with a bounded message', () => {
+  it('logs an exception event at error level with its category and no error text', () => {
     recordBusinessEvent({
       name: 'box.stop',
       outcome: 'exception',
       correlationId: 'box-2',
       orgId: 'org-2',
       exceptionType: 'runner_job_failed',
-      exceptionMessage: 'x'.repeat(5000),
     })
 
     expect(logSpy).not.toHaveBeenCalled()
     const [message, attributes] = errorSpy.mock.calls[0]
     expect(message).toBe('box.stop exception')
     expect(attributes['exception.type']).toBe('runner_job_failed')
-    expect(attributes['exception.message']).toHaveLength(1024)
+    expect(attributes).not.toHaveProperty('exception.message')
   })
 })
