@@ -4,7 +4,7 @@
  */
 
 import { Logger } from '@nestjs/common'
-import { getTelemetryServiceType } from './app-mode'
+import { getServiceType } from './app-mode'
 
 export type BusinessEventName = 'user.registration' | 'box.create' | 'box.stop' | 'box.delete'
 
@@ -48,7 +48,7 @@ function toLogAttributes(event: BusinessEvent): Record<string, string> {
     'event.name': event.name,
     'event.outcome': event.outcome,
     'correlation.id': event.correlationId,
-    'service.type': getTelemetryServiceType(),
+    'service.type': getServiceType(),
     'event.timestamp': new Date().toISOString(),
   }
 
