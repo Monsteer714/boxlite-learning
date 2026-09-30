@@ -228,7 +228,7 @@ export class BoxliteBoxController {
     @AuthContext() authContext: OrganizationAuthContext,
     @Param('boxId') boxId: string,
   ): Promise<BoxResponseDto> {
-    const box = await this.boxService.stop(boxId, authContext.organizationId)
+    const box = await this.boxService.stop(boxId, authContext.organizationId, 'user')
     const dto = await this.boxService.toBoxDto(box)
     return boxToBoxResponse(dto)
   }

@@ -137,6 +137,14 @@ export class BoxManager implements TrackableJobExecutions, OnApplicationShutdown
                   },
                 })
 
+                recordBusinessEvent({
+                  name: 'box.stop',
+                  outcome: 'requested',
+                  correlationId: box.id,
+                  orgId: box.organizationId,
+                  actorKind: 'auto_stop',
+                })
+
                 this.syncInstanceState(box.id).catch(this.logger.error)
               } catch (error) {
                 this.logger.error(`Error processing auto-stop state for box ${box.id}:`, error)

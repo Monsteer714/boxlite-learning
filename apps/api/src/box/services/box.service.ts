@@ -1018,7 +1018,12 @@ export class BoxService {
     return updated
   }
 
-  async stop(boxIdOrName: string, organizationId?: string, force?: boolean): Promise<Box> {
+  async stop(
+    boxIdOrName: string,
+    organizationId: string | undefined,
+    actorKind: BusinessEventActorKind,
+    force?: boolean,
+  ): Promise<Box> {
     const box = await this.findOneByIdOrName(boxIdOrName, organizationId)
 
     this.assertBoxNotErrored(box)
@@ -1043,6 +1048,14 @@ export class BoxService {
     const updatedBox = await this.boxRepository.updateWhere(box.id, {
       updateData,
       whereCondition: { pending: false, state: box.state },
+    })
+
+    recordBusinessEvent({
+      name: 'box.stop',
+      outcome: 'requested',
+      correlationId: updatedBox.id,
+      orgId: updatedBox.organizationId,
+      actorKind,
     })
 
     this.eventEmitter.emit(BoxEvents.STOPPED, new BoxStoppedEvent(updatedBox, force))
@@ -1524,7 +1537,7 @@ export class BoxService {
 
   @OnEvent(OrganizationEvents.SUSPENDED_BOX_STOPPED)
   async handleSuspendedBoxStopped(event: OrganizationSuspendedBoxStoppedEvent) {
-    await this.stop(event.boxId).catch((error) => {
+    await this.stop(event.boxId, undefined, 'org_suspension').catch((error) => {
       //  log the error for now, but don't throw it as it will be retried
       this.logger.error(`Error stopping box from suspended organization. BoxId: ${event.boxId}: `, error)
     })

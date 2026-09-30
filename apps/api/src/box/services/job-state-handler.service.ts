@@ -208,6 +208,7 @@ export class JobStateHandlerService {
       }
 
       await this.boxRepository.update(boxId, { updateData, entity: box })
+      this.recordJobOutcome('box.stop', job, box)
     } catch (error) {
       this.logger.error(`Error handling STOP_BOX job completion for box ${boxId}:`, error)
     }
@@ -253,7 +254,7 @@ export class JobStateHandlerService {
    * box row reflecting that outcome has been written, and only for COMPLETED
    * or FAILED jobs (handleJobCompletion returns early on anything else).
    */
-  private recordJobOutcome(name: 'box.create' | 'box.delete', job: Job, box: Box): void {
+  private recordJobOutcome(name: 'box.create' | 'box.stop' | 'box.delete', job: Job, box: Box): void {
     const event = { name, correlationId: box.id, orgId: box.organizationId } as const
     if (job.status === JobStatus.COMPLETED) {
       recordBusinessEvent({ ...event, outcome: 'success' })
