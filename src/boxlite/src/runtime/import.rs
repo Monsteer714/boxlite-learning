@@ -97,6 +97,13 @@ fn options_from_manifest(
     options.sanitize().map_err(|error| {
         BoxliteError::InvalidArgument(format!("invalid archive box_options: {error}"))
     })?;
+    // The local runtime shares no typed mounts yet(TODO), so an archive that
+    // carries one is refused rather than stored and dropped at boot.
+    if !options.mounts.is_empty() {
+        return Err(BoxliteError::Unsupported(
+            "typed mounts are not supported by the local runtime yet".to_string(),
+        ));
+    }
 
     if policy == ArchiveImportPolicy::Trusted {
         return Ok(options);

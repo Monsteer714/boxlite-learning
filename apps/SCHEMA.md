@@ -405,16 +405,16 @@ a derived availability score.
 | `class` | `enum` | default `small` |
 | `cpu` | `double precision` | declared capacity |
 | `memoryGiB` | `double precision` | declared capacity |
-| `diskGiB` | `double precision` | declared capacity |
+| `diskGiB` | `double precision` | declared capacity; each heartbeat overwrites it with the size of the filesystem holding the runner's BoxLite home |
 | `gpu` | `integer` | nullable |
 | `gpuType` | `character varying` | nullable |
 | `currentCpuLoadAverage` | `double precision` | |
 | `currentCpuUsagePercentage` | `double precision` | |
 | `currentMemoryUsagePercentage` | `double precision` | |
-| `currentDiskUsagePercentage` | `double precision` | |
+| `currentDiskUsagePercentage` | `double precision` | use of that filesystem (`df` Use%) |
 | `currentAllocatedCpu` | `double precision` | |
 | `currentAllocatedMemoryGiB` | `double precision` | |
-| `currentAllocatedDiskGiB` | `double precision` | |
+| `currentAllocatedDiskGiB` | `double precision` | used GiB on that filesystem (`df` Used), not a sum of box sizes |
 | `currentStartedBoxes` | `integer` | |
 | `availabilityScore` | `integer` | |
 | `unschedulable` | `boolean` | default `false` |
@@ -659,7 +659,7 @@ boundary.
 
 | Store | Owner | Contents |
 | ----- | ----- | -------- |
-| ClickHouse database `otel` | written by [`otel-collector`](./otel-collector/config.yaml), read by `apps/api` | `otel_logs`, `otel_traces`, `otel_metrics_gauge` — the upstream ClickHouse exporter's own schema, queried by [`box-telemetry`](./api/src/box-telemetry/services/box-telemetry.service.ts) to serve per-box logs, traces, and metrics. The collector runs with `create_schema: false` and a 72-hour TTL, so it writes the tables but does not own them. |
+| ClickHouse database `otel` | written by [`otel-collector`](./otel-collector/config.yaml), read by `apps/api` | `otel_logs`, `otel_traces`, `otel_metrics_gauge` — the upstream ClickHouse exporter's own schema, queried by [`box-telemetry`](./api/src/box-telemetry/services/box-telemetry.service.ts) to serve per-box logs, traces, and metrics. The collector uses `create_schema: false`; self-hosted infrastructure owns table TTLs through `CLICKHOUSE_RETENTION_HOURS`, defaulting to 720 hours (30 days). |
 | SQLite `/var/dex/dex.db` | [`dex`](./dex/config.yaml) | Dex's own OIDC state — clients, auth codes, refresh tokens, signing keys. The control plane knows a person only by the subject dex issues, stored as `user.id`. |
 | Redis | `apps/api` | Advisory locks, rate-limit counters, and caches. Not a table store, and not a source of truth: because the locks expire, the invariants that matter live in the partial unique indexes listed above. |
 
