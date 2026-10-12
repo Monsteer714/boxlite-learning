@@ -9,6 +9,7 @@ import { BoxModule } from '../box/box.module'
 import { AuthModule } from '../auth/auth.module'
 import { ApiKeyModule } from '../api-key/api-key.module'
 import { OrganizationModule } from '../organization/organization.module'
+import { UserModule } from '../user/user.module'
 import { BoxliteMeController } from './boxlite-me.controller'
 import { BoxliteConfigController } from './boxlite-config.controller'
 import { BoxliteBoxController } from './boxlite-box.controller'
@@ -19,7 +20,7 @@ import { BoxliteVolumeController } from './boxlite-volume.controller'
 import { CommerceBoxLimitService } from './commerce-box-limit.service'
 
 @Module({
-  imports: [BoxModule, AuthModule, ApiKeyModule, OrganizationModule],
+  imports: [BoxModule, AuthModule, ApiKeyModule, OrganizationModule, UserModule],
   controllers: [
     BoxliteMeController,
     BoxliteConfigController,

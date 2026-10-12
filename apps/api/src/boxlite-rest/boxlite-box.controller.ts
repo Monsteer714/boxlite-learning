@@ -25,11 +25,12 @@ import {
 import { ApiTags, ApiBearerAuth, ApiResponse, ApiExcludeController } from '@nestjs/swagger'
 import { Response } from 'express'
 import { CombinedAuthGuard } from '../auth/combined-auth.guard'
-import { OrganizationResourceActionGuard } from '../organization/guards/organization-resource-action.guard'
+import {
+  OrganizationResourceActionGuard,
+  hasOrganizationResourcePermissions,
+} from '../organization/guards/organization-resource-action.guard'
 import { RequiredOrganizationResourcePermissions } from '../organization/decorators/required-organization-resource-permissions.decorator'
 import { OrganizationResourcePermission } from '../organization/enums/organization-resource-permission.enum'
-import { OrganizationMemberRole } from '../organization/enums/organization-member-role.enum'
-import { SystemRole } from '../user/enums/system-role.enum'
 import { AuthContext } from '../common/decorators/auth-context.decorator'
 import { OrganizationAuthContext } from '../common/interfaces/auth-context.interface'
 import { BoxService } from '../box/services/box.service'
@@ -144,22 +145,9 @@ export class BoxliteBoxController {
   // bounded by the permissions its credential carries. A static route decorator
   // cannot express this because it applies only when volumes are requested.
   private assertCanAttachVolumes(authContext: OrganizationAuthContext): void {
-    if (authContext.role === SystemRole.ADMIN) {
-      return
-    }
-    if (authContext.organizationUser?.role === OrganizationMemberRole.OWNER && !authContext.apiKey) {
-      return
-    }
-
-    const held = new Set(
-      authContext.apiKey
-        ? authContext.apiKey.permissions
-        : (authContext.organizationUser?.assignedRoles ?? []).flatMap((role) => role.permissions),
-    )
     const required = [OrganizationResourcePermission.READ_VOLUMES, OrganizationResourcePermission.WRITE_VOLUMES]
-    const missing = required.filter((permission) => !held.has(permission))
-    if (missing.length) {
-      throw new ForbiddenException(`Attaching a managed volume requires: ${missing.join(', ')}`)
+    if (!hasOrganizationResourcePermissions(authContext, required)) {
+      throw new ForbiddenException(`Attaching a managed volume requires: ${required.join(', ')}`)
     }
   }
 

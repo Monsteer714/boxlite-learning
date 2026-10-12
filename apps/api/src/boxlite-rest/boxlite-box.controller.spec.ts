@@ -219,6 +219,15 @@ describe('BoxliteBoxController volume attachment authorization', () => {
     expect(boxService.create).not.toHaveBeenCalled()
   })
 
+  it('refuses a key missing only read:volumes', async () => {
+    const { controller, boxService } = makeController()
+
+    await expect(controller.createBox(keyContext([WRITE_BOXES, WRITE_VOLUMES]), dtoWithVolume)).rejects.toThrow(
+      /read:volumes/,
+    )
+    expect(boxService.create).not.toHaveBeenCalled()
+  })
+
   it('allows a key holding both volume permissions', async () => {
     const { controller, boxService } = makeController()
 

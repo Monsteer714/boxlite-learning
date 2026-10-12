@@ -344,16 +344,20 @@ through `GET /api/v1/me`. Except for configuration discovery, these routes use
 combined bearer authentication, then organization authorization.
 
 Resource permissions are enforced per route. A box mutation — create, start,
-stop, exec, signal, resize, execution kill, file transfer, and the network
-routes — requires `write:boxes`; deleting a box requires `delete:boxes`. Box
-reads (list, get, head, execution status, metrics) carry no permission and are
-reached by any member, because the model has no `read:boxes`. Volume routes
-require `read:volumes`, `write:volumes`, or `delete:volumes` to match. Attaching
-a managed volume while creating a box is authorized independently of
-`write:boxes`: the caller must also hold `read:volumes` and `write:volumes`, so a
-box-only credential cannot reach another's volume data (GHSA-2qqv-7cwv-mj8h).
-A system admin and an interactive owner without an API key are not
-permission-bounded; every API key is bounded by the permissions it carries.
+stop, exec, signal, resize, execution kill, file transfer, WebSocket attach, and
+the network routes — requires `write:boxes`; deleting a box requires
+`delete:boxes`. Box reads (list, get, head, execution status, metrics) carry no
+permission and are reached by any member, because the model has no `read:boxes`.
+Volume routes require `read:volumes`, `write:volumes`, or `delete:volumes` to
+match. Attaching a managed volume while creating a box is authorized
+independently of `write:boxes`: the caller must also hold `read:volumes` and
+`write:volumes`, so a box-only credential cannot reach another's volume data
+(GHSA-2qqv-7cwv-mj8h). A system admin and an interactive owner without an API key
+are not permission-bounded; every API key is bounded by the permissions it
+carries. The WebSocket `/attach` upgrade enforces `write:boxes` inline — an
+upgrade never passes through the organization guard — using the same admin and
+owner exemptions, so it resolves the caller's system role just as the HTTP path
+does.
 `GET /api/v1/me` can return `path_prefix: null` for an authenticated user with no
 organization membership.
 
