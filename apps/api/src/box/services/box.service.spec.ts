@@ -13,6 +13,7 @@ import { BadRequestError } from '../../exceptions/bad-request.exception'
 import { BoxEvents } from '../constants/box-events.constants'
 import { CreateBoxDto as RestCreateBoxDto } from '../../boxlite-rest/dto/create-box.dto'
 import { createBoxToCreateBox } from '../../boxlite-rest/mappers/box-to-box.mapper'
+import { Context } from '../../common/context/context'
 
 // ensureStartedForProxy only touches boxRepository + eventEmitter +
 // organizationService; every other injected dependency is irrelevant.
@@ -348,7 +349,11 @@ describe('BoxService public defaults', () => {
       const { service, boxRepository, warmPoolService } = makeCreateService()
       ;(service as any).redis.exists.mockResolvedValue(0)
 
-      await service.create({ name: 'restricted-box', image: 'base', ...request } as any, { id: 'org-1', ...org } as any)
+      await service.create(
+        { name: 'restricted-box', image: 'base', ...request } as any,
+        { id: 'org-1', ...org } as any,
+        Context.user(),
+      )
 
       expect(warmPoolService.fetchWarmPoolBox).not.toHaveBeenCalled()
       expect(boxRepository.insert).toHaveBeenCalledWith(expect.objectContaining(expected), undefined)
@@ -361,7 +366,7 @@ describe('BoxService public defaults', () => {
   ])('defaults a fresh box to public=%s', async (requestedPublic, expectedPublic) => {
     const { service, boxRepository } = makeCreateService()
 
-    await service.create({ name: 'fresh-box', public: requestedPublic } as any, { id: 'org-1' } as any)
+    await service.create({ name: 'fresh-box', public: requestedPublic } as any, { id: 'org-1' } as any, Context.user())
 
     expect(boxRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ public: expectedPublic }), undefined)
   })
@@ -376,7 +381,7 @@ describe('BoxService public defaults', () => {
     const { service, boxRepository } = makeCreateService()
     const restDto = plainToInstance(RestCreateBoxDto, { name: 'rest-box', image: 'base', network })
 
-    await service.create(createBoxToCreateBox(restDto), { id: 'org-1' } as any)
+    await service.create(createBoxToCreateBox(restDto), { id: 'org-1' } as any, Context.user())
 
     expect(boxRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ public: expectedPublic }), undefined)
   })
@@ -387,6 +392,7 @@ describe('BoxService public defaults', () => {
     await service.create(
       { name: 'secret-box', image: 'base', secrets: [{ name: 'openai', value: 'sk-test' }] } as any,
       { id: 'org-1' } as any,
+      Context.user(),
     )
 
     expect(boxRepository.insert).toHaveBeenCalledWith(
@@ -404,6 +410,7 @@ describe('BoxService public defaults', () => {
     await service.create(
       { name: 'secret-box', image: 'base', secrets: [{ name: 'openai', value: 'sk-test' }] } as any,
       { id: 'org-1' } as any,
+      Context.user(),
     )
 
     expect(warmPoolService.fetchWarmPoolBox).not.toHaveBeenCalled()

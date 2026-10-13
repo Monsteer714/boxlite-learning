@@ -16,8 +16,8 @@ import { UpdateUserDto } from './dto/update-user.dto'
 import { UserCreatedEvent } from './events/user-created.event'
 import { UserDeletedEvent } from './events/user-deleted.event'
 import { UserEmailVerifiedEvent } from './events/user-email-verified.event'
-import { recordBusinessEvent } from '../common/utils/business-event.util'
-import { currentLogContext } from '../common/utils/business-event-context'
+import { recordOutcomes } from '../common/utils/business-event.util'
+import { Context } from '../common/context/context'
 
 const PG_UNIQUE_VIOLATION = '23505'
 
@@ -30,11 +30,8 @@ export class UserService {
     private readonly dataSource: DataSource,
   ) {}
 
-  /**
-   * Records user.registration business events, with the actor, when called inside
-   * runWithLogContext. The boot-time admin seed calls it outside one: it is not a registration.
-   */
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  /** Records the user.registration events of the new user, started by ctx. */
+  async create(createUserDto: CreateUserDto, ctx: Context): Promise<User> {
     const defaultOrganizationDefaultRegionId =
       createUserDto.defaultOrganizationDefaultRegionId ?? createUserDto.personalOrganizationDefaultRegionId
     let user = new User()
@@ -53,40 +50,19 @@ export class UserService {
       user.role = createUserDto.role
     }
 
-    const registeredBy = currentLogContext()?.actorKind
-    const registration = registeredBy
-      ? ({ name: 'user.registration', correlationId: createUserDto.id, actorKind: registeredBy } as const)
-      : undefined
-    if (registration) {
-      recordBusinessEvent({ ...registration, outcome: 'requested' })
-    }
+    await recordOutcomes(
+      { name: 'user.registration', correlationId: createUserDto.id, ctx },
+      () =>
+        this.dataSource.transaction(async (em) => {
+          user = await em.save(user)
+          await this.eventEmitter.emitAsync(
+            UserEvents.CREATED,
+            new UserCreatedEvent(em, user, defaultOrganizationDefaultRegionId),
+          )
+        }),
+      (error) => ((error as { code?: string })?.code === PG_UNIQUE_VIOLATION ? 'user_conflict' : 'internal'),
+    )
 
-    let defaultOrganizationId: string | undefined
-    try {
-      await this.dataSource.transaction(async (em) => {
-        user = await em.save(user)
-        // The only listener, OrganizationService.handleUserCreatedEvent,
-        // returns the default organization it creates in this transaction.
-        const [defaultOrganization] = await this.eventEmitter.emitAsync(
-          UserEvents.CREATED,
-          new UserCreatedEvent(em, user, defaultOrganizationDefaultRegionId),
-        )
-        defaultOrganizationId = defaultOrganization?.id
-      })
-    } catch (error) {
-      if (registration) {
-        recordBusinessEvent({
-          ...registration,
-          outcome: 'exception',
-          exceptionType: error?.code === PG_UNIQUE_VIOLATION ? 'user_conflict' : 'internal',
-        })
-      }
-      throw error
-    }
-
-    if (registration) {
-      recordBusinessEvent({ ...registration, outcome: 'success', orgId: defaultOrganizationId })
-    }
     return user
   }
 

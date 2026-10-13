@@ -10,29 +10,34 @@ per business event; the attributes reach OTLP through nestjs-pino, where alerts 
 
 | Event | Recorded by | Outcomes |
 | --- | --- | --- |
-| `user.registration` | `UserService.create` | requested, success, exception |
+| `user.registration` | `UserService.create`, through `recordOutcomes` | requested, success, exception |
 | `user.login` | `LoginEventRecorder` | success |
 | `box.create`, `box.stop`, `box.delete` | `BoxService`, the auto-stop and auto-delete crons | requested |
 | `box.create`, `box.stop`, `box.delete` | `JobStateHandler`, when the runner job finishes | success, exception |
 
-### Who asked: the log context
+Box events go through `src/box/utils/box-business-event.util.ts`: the request and the outcome are
+recorded in different places, so one call cannot cover both.
 
-`actor.kind` comes from the entry point, not from a service parameter. The entry point runs the
-service call inside `runWithLogContext` (`src/common/utils/business-event-context.ts`), an
-`AsyncLocalStorage` store that follows the call's awaits; the service reads `currentLogContext()`.
+An event names its entity only by `correlation.id` (the user id or the box id). It carries no
+`org.id`: the box table holds a box's organization, and the organization tables a user's.
+
+### Who asked: the operation context
+
+A service that records an event takes a required `ctx: Context` (`src/common/context/`) from its
+caller. The compiler rejects a call that omits it.
 
 ```ts
-return runWithLogContext({ actorKind: 'admin' }, () => this.userService.create(createUserDto))
+return this.userService.create(createUserDto, Context.admin())
+await this.stop(event.boxId, undefined, Context.platform(PlatformReason.ORG_SUSPENSION))
 ```
 
-- Outside a context, `UserService.create` records no registration: that is how the boot-time admin
-  seed stays out of the events. Box events are still recorded, without `actor.kind`.
-- Forgetting the wrapper compiles and runs; only the actor goes missing. Give every new entry point
-  a spec that reads `currentLogContext()` inside the mocked service call, as
-  `boxlite-box.controller.business-event.spec.ts` does.
-- Job outcome events carry no actor: the runner reports on another async chain, after the context
-  has ended.
-- Pass a new object to a nested `runWithLogContext`; never mutate the current store, which sibling
-  async work shares.
-- Event listeners started inside a run inherit its actor, so a listener that records its own
-  business event must set its own context.
+| Context | `actor.kind` | `event.reason` |
+| --- | --- | --- |
+| `Context.user()` | `user` | — |
+| `Context.admin()` | `admin` | — |
+| `Context.platform(reason)` | `platform` | the `PlatformReason`, such as `auto_stop` or `bootstrap` |
+
+- Only the platform gives a reason; user and admin contexts have none.
+- The boot-time admin seed registers as `Context.platform(PlatformReason.BOOTSTRAP)`.
+- Job outcome events carry no context: the runner reports after the request has ended.
+- Add caller-decided fields to `Context`, not new service parameters.

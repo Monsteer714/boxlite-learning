@@ -8,7 +8,8 @@ import { BoxState } from '../enums/box-state.enum'
 import { BoxDesiredState } from '../enums/box-desired-state.enum'
 import { RunnerState } from '../enums/runner-state.enum'
 import { recordBusinessEvent } from '../../common/utils/business-event.util'
-import { currentLogContext, runWithLogContext } from '../../common/utils/business-event-context'
+import { Context } from '../../common/context/context'
+import { PlatformReason } from '../../common/context/platform-reason.enum'
 
 jest.mock('../../common/utils/business-event.util', () => ({ recordBusinessEvent: jest.fn() }))
 
@@ -56,61 +57,49 @@ const requested = (name: string) =>
 describe('BoxService business event actor', () => {
   beforeEach(() => jest.mocked(recordBusinessEvent).mockClear())
 
-  it('records the log context actor on box.create', async () => {
+  it('records the caller context on box.create', async () => {
     const service = makeCreateService()
 
-    await runWithLogContext({ actorKind: 'user' }, () =>
-      service.create({ name: 'fresh-box', image: 'base' } as any, { id: 'org-1' } as any),
-    )
+    await service.create({ name: 'fresh-box', image: 'base' } as any, { id: 'org-1' } as any, Context.user())
 
-    expect(requested('box.create')?.[0]).toEqual(expect.objectContaining({ actorKind: 'user' }))
+    expect(requested('box.create')?.[0]).toEqual({
+      name: 'box.create',
+      outcome: 'requested',
+      correlationId: expect.any(String),
+      ctx: Context.user(),
+    })
   })
 
-  it('records the log context actor on box.stop and box.delete', async () => {
+  it('records the caller context on box.stop and box.delete, without an organization', async () => {
     const service = makeService()
 
-    await runWithLogContext({ actorKind: 'user' }, () => service.stop('box-1', 'org-1'))
-    await runWithLogContext({ actorKind: 'user' }, () => service.destroy('box-1', 'org-1'))
+    await service.stop('box-1', 'org-1', Context.user())
+    await service.destroy('box-1', 'org-1', Context.user())
 
-    expect(requested('box.stop')?.[0]).toEqual(expect.objectContaining({ actorKind: 'user' }))
-    expect(requested('box.delete')?.[0]).toEqual(expect.objectContaining({ actorKind: 'user' }))
+    for (const name of ['box.stop', 'box.delete']) {
+      expect(requested(name)?.[0]).toEqual({ name, outcome: 'requested', correlationId: 'box-1', ctx: Context.user() })
+    }
   })
 
-  it('still records box.stop outside a log context, without an actor', async () => {
+  it('destroys warm-pool boxes on unschedulable runners as the platform, for the warm pool', async () => {
     const service = makeService()
-
-    await service.stop('box-1', 'org-1')
-
-    expect(requested('box.stop')?.[0]).toEqual(expect.objectContaining({ actorKind: undefined }))
-  })
-
-  it('destroys warm-pool boxes on unschedulable runners as warm_pool', async () => {
-    const service = makeService()
-    const contexts: unknown[] = []
     Object.assign(service as any, {
       runnerRepository: { find: jest.fn().mockResolvedValue([{ id: 'runner-1' }]) },
       boxRepository: { find: jest.fn().mockResolvedValue([startedBox]) },
     })
-    jest.spyOn(service, 'destroy').mockImplementation(async () => {
-      contexts.push(currentLogContext())
-      return startedBox as any
-    })
+    const destroy = jest.spyOn(service, 'destroy').mockResolvedValue(startedBox as any)
 
     await (service as any).handleUnschedulableRunners()
 
-    expect(contexts).toEqual([{ actorKind: 'warm_pool' }])
+    expect(destroy).toHaveBeenCalledWith('box-1', undefined, Context.platform(PlatformReason.WARM_POOL))
   })
 
-  it('stops a suspended organization box as org_suspension', async () => {
+  it('stops a suspended organization box as the platform, for the suspension', async () => {
     const service = makeService()
-    const contexts: unknown[] = []
-    jest.spyOn(service, 'stop').mockImplementation(async () => {
-      contexts.push(currentLogContext())
-      return startedBox as any
-    })
+    const stop = jest.spyOn(service, 'stop').mockResolvedValue(startedBox as any)
 
     await service.handleSuspendedBoxStopped({ boxId: 'box-1' } as any)
 
-    expect(contexts).toEqual([{ actorKind: 'org_suspension' }])
+    expect(stop).toHaveBeenCalledWith('box-1', undefined, Context.platform(PlatformReason.ORG_SUSPENSION))
   })
 })

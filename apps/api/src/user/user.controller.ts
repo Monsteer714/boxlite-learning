@@ -39,7 +39,7 @@ import { Audit, TypedRequest } from '../audit/decorators/audit.decorator'
 import { AuditAction } from '../audit/enums/audit-action.enum'
 import { AuditTarget } from '../audit/enums/audit-target.enum'
 import { AuthenticatedRateLimitGuard } from '../common/guards/authenticated-rate-limit.guard'
-import { runWithLogContext } from '../common/utils/business-event-context'
+import { Context } from '../common/context/context'
 
 @ApiTags('users')
 @Controller('users')
@@ -96,7 +96,7 @@ export class UserController {
     },
   })
   async create(@Body() createUserDto: CreateUserDto): Promise<User> {
-    return runWithLogContext({ actorKind: 'admin' }, () => this.userService.create(createUserDto))
+    return this.userService.create(createUserDto, Context.admin())
   }
 
   @Get()

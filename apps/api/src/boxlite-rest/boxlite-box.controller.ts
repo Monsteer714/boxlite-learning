@@ -41,7 +41,7 @@ import { Audit, MASKED_AUDIT_VALUE, TypedRequest } from '../audit/decorators/aud
 import { AuditAction } from '../audit/enums/audit-action.enum'
 import { AuditTarget } from '../audit/enums/audit-target.enum'
 import { CommerceBoxLimitService } from './commerce-box-limit.service'
-import { runWithLogContext } from '../common/utils/business-event-context'
+import { Context } from '../common/context/context'
 
 // Spec-first surface: the contract is openapi/box.openapi.yaml, not the
 // generated product spec (which `:prefix` routes would render invalid).
@@ -121,9 +121,7 @@ export class BoxliteBoxController {
     const createBoxDto = createBoxToCreateBox(dto)
     const maxCreatedBoxes = await this.commerceBoxLimitService.resolveMaxCreatedBoxes(organization.id)
 
-    let box = await runWithLogContext({ actorKind: 'user' }, () =>
-      this.boxService.create(createBoxDto, organization, { maxCreatedBoxes }),
-    )
+    let box = await this.boxService.create(createBoxDto, organization, Context.user(), { maxCreatedBoxes })
     if (box.state !== BoxState.STARTED) {
       box = await this.boxStateWaiter.waitForStarted(box.id, organization.id, 30)
     }
@@ -184,7 +182,7 @@ export class BoxliteBoxController {
     targetIdFromRequest: (req) => req.params.boxId,
   })
   async removeBox(@AuthContext() authContext: OrganizationAuthContext, @Param('boxId') boxId: string) {
-    await runWithLogContext({ actorKind: 'user' }, () => this.boxService.destroy(boxId, authContext.organizationId))
+    await this.boxService.destroy(boxId, authContext.organizationId, Context.user())
   }
 
   @Post(':boxId/start')
@@ -234,9 +232,7 @@ export class BoxliteBoxController {
     @AuthContext() authContext: OrganizationAuthContext,
     @Param('boxId') boxId: string,
   ): Promise<BoxResponseDto> {
-    const box = await runWithLogContext({ actorKind: 'user' }, () =>
-      this.boxService.stop(boxId, authContext.organizationId),
-    )
+    const box = await this.boxService.stop(boxId, authContext.organizationId, Context.user())
     const dto = await this.boxService.toBoxDto(box)
     return boxToBoxResponse(dto)
   }
