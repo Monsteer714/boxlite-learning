@@ -255,4 +255,31 @@ describe('BoxliteWsProxyService', () => {
       organization: { id: 'org-1', suspended: false },
     })
   })
+
+  // The system role decides the admin exemption, so a credential whose user can
+  // no longer be resolved is refused before any membership or permission check.
+  it('rejects an API key whose user no longer exists', async () => {
+    const { service, apiKeyService, organizationUserService, userService } = buildAuthHarness()
+    apiKeyService.getApiKeyByValue.mockResolvedValue({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      expiresAt: null,
+      permissions: [OrganizationResourcePermission.WRITE_BOXES],
+    })
+    userService.findOne.mockResolvedValue(null)
+
+    await expect(service.authenticate(authRequest('blk_live_test'))).resolves.toBeNull()
+    expect(organizationUserService.findOne).not.toHaveBeenCalled()
+  })
+
+  it('rejects a JWT whose user no longer exists', async () => {
+    const { service, organizationUserService, jwtStrategy, userService } = buildAuthHarness()
+    jwtStrategy.verifyToken.mockResolvedValue({ sub: 'user-1', email: 'dev@acme.test' })
+    userService.findOne.mockResolvedValue(null)
+
+    await expect(
+      service.authenticate(authRequest('eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyXzEifQ.signature'), 'org-1'),
+    ).resolves.toBeNull()
+    expect(organizationUserService.findOne).not.toHaveBeenCalled()
+  })
 })
