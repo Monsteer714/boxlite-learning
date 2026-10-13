@@ -47,6 +47,13 @@ function makeCreateService() {
     boxRepository: { insert: jest.fn(async (box: any) => box) },
     eventEmitter: { emitAsync: jest.fn().mockResolvedValue(undefined) },
     toBoxDto: jest.fn((box) => box),
+    imageAdmissionService: {
+      assert: jest.fn().mockResolvedValue(undefined),
+      spendColdPullBudget: jest.fn().mockResolvedValue(undefined),
+    },
+    imageResolverService: {
+      resolve: jest.fn().mockResolvedValue({ ref: 'quay.io/acme/app@sha256:resolved', isOrgOwned: true }),
+    },
   })
   return service
 }

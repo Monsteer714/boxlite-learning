@@ -456,7 +456,11 @@ describe('BoxService public defaults', () => {
   it('stores the ref the resolver returned, not the selector the caller sent', async () => {
     const { service, boxRepository } = makeCreateService()
 
-    await service.create({ name: 'tenant-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any)
+    await service.create(
+      { name: 'tenant-box', image: 'quay.io/acme/app:v1' } as any,
+      { id: 'org-1' } as any,
+      Context.user(),
+    )
 
     expect((service as any).imageAdmissionService.assert).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'org-1' }),
@@ -488,7 +492,7 @@ describe('BoxService public defaults', () => {
       imageResolverService: new ImageResolverService(repository),
     })
 
-    await service.create({ name: 'curated-box', image: 'python' } as any, { id: 'org-1' } as any)
+    await service.create({ name: 'curated-box', image: 'python' } as any, { id: 'org-1' } as any, Context.user())
 
     expect(boxRepository.insert).toHaveBeenCalledWith(
       expect.objectContaining({ image: expect.stringContaining('boxlite-agent-python') }),
@@ -509,7 +513,11 @@ describe('BoxService public defaults', () => {
   it('neither consults the warm pool nor names a skip key for an org image', async () => {
     const { service, warmPoolService } = makeCreateService()
 
-    await service.create({ name: 'tenant-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any)
+    await service.create(
+      { name: 'tenant-box', image: 'quay.io/acme/app:v1' } as any,
+      { id: 'org-1' } as any,
+      Context.user(),
+    )
 
     expect((service as any).redis.exists).not.toHaveBeenCalled()
     expect(warmPoolService.fetchWarmPoolBox).not.toHaveBeenCalled()
@@ -527,7 +535,7 @@ describe('BoxService public defaults', () => {
       redis: { exists: jest.fn().mockResolvedValue(0) },
     })
 
-    await service.create({ name: 'curated-box', image: 'base' } as any, { id: 'org-1' } as any)
+    await service.create({ name: 'curated-box', image: 'base' } as any, { id: 'org-1' } as any, Context.user())
 
     expect((service as any).redis.exists).toHaveBeenCalled()
     expect(warmPoolService.fetchWarmPoolBox).toHaveBeenCalled()
@@ -580,7 +588,11 @@ describe('BoxService public defaults', () => {
       async () => void order.push('budget'),
     )
 
-    await service.create({ name: 'ordered-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any)
+    await service.create(
+      { name: 'ordered-box', image: 'quay.io/acme/app:v1' } as any,
+      { id: 'org-1' } as any,
+      Context.user(),
+    )
 
     // A refused image must not reach a catalog query.
     expect(order).toEqual(['admission', 'resolver', 'budget'])
@@ -630,7 +642,11 @@ describe('BoxService public defaults', () => {
       const pinned = { ref: `quay.io/acme/app@sha256:${'a'.repeat(64)}`, isOrgOwned: true, imageId: 'image-1' }
       const { service, redis } = withRealAdmission(pinned)
 
-      await service.create({ name: 'pinned-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any)
+      await service.create(
+        { name: 'pinned-box', image: 'quay.io/acme/app:v1' } as any,
+        { id: 'org-1' } as any,
+        Context.user(),
+      )
 
       expect(redis.incr).not.toHaveBeenCalled()
     })
@@ -650,6 +666,7 @@ describe('BoxService public defaults', () => {
         service.create(
           { name: 'over-box', image: 'quay.io/acme/app:v1' } as any,
           { id: 'org-1', imageCountLimit: 20 } as any,
+          Context.user(),
         ),
       ).rejects.toThrow(/limit of 20 images/)
 
@@ -671,6 +688,7 @@ describe('BoxService public defaults', () => {
             volumes: [{ volumeId: 'missing', mountPath: '/data' }],
           } as any,
           { id: 'org-1' } as any,
+          Context.user(),
         ),
       ).rejects.toThrow(/no such volume/)
 
@@ -684,7 +702,11 @@ describe('BoxService public defaults', () => {
       const { service, redis } = withRealAdmission({ ref: 'quay.io/acme/app:v1', isOrgOwned: true })
 
       await expect(
-        service.create({ name: 'refused-box', image: 'quay.io/acme/app:v1', ...input } as any, { id: 'org-1' } as any),
+        service.create(
+          { name: 'refused-box', image: 'quay.io/acme/app:v1', ...input } as any,
+          { id: 'org-1' } as any,
+          Context.user(),
+        ),
       ).rejects.toThrow(BadRequestError)
 
       expect(redis.incr).not.toHaveBeenCalled()
@@ -697,7 +719,11 @@ describe('BoxService public defaults', () => {
       )
 
       await expect(
-        service.create({ name: 'unplaced-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any),
+        service.create(
+          { name: 'unplaced-box', image: 'quay.io/acme/app:v1' } as any,
+          { id: 'org-1' } as any,
+          Context.user(),
+        ),
       ).rejects.toThrow(/no runner/)
 
       expect(redis.incr).not.toHaveBeenCalled()
@@ -709,7 +735,11 @@ describe('BoxService public defaults', () => {
       redis.ttl.mockResolvedValue(30)
 
       await expect(
-        service.create({ name: 'over-budget-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any),
+        service.create(
+          { name: 'over-budget-box', image: 'quay.io/acme/app:v1' } as any,
+          { id: 'org-1' } as any,
+          Context.user(),
+        ),
       ).rejects.toThrow(/Too many image pulls/)
 
       expect((service as any).boxRepository.insert).not.toHaveBeenCalled()
@@ -718,7 +748,11 @@ describe('BoxService public defaults', () => {
     it('spends one on a ref the catalog has not seen', async () => {
       const { service, redis } = withRealAdmission({ ref: 'quay.io/acme/app:v1', isOrgOwned: true })
 
-      await service.create({ name: 'first-box', image: 'quay.io/acme/app:v1' } as any, { id: 'org-1' } as any)
+      await service.create(
+        { name: 'first-box', image: 'quay.io/acme/app:v1' } as any,
+        { id: 'org-1' } as any,
+        Context.user(),
+      )
 
       expect(redis.incr).toHaveBeenCalledTimes(1)
     })
