@@ -1,5 +1,5 @@
 PHONY_TARGETS += test test\:unit\:cli test\:unit\:vmm test\:unit\:guest test\:guest-perms test\:guest-artifacts test\:perf\:import-export _ensure-infra-deps test\:apps\:infra test\:apps\:infra-config test\:skill\:boxlite-diagrams
-PHONY_TARGETS += test\:integration\:vmm\:kvm _ensure-kvm
+PHONY_TARGETS += test\:integration\:vmm\:kvm _ensure-kvm test\:vmm\:boot
 
 # Mirrors GitHub Actions strategy.fail-fast. Default false: aggregator
 # targets run every sub-suite even if an earlier one fails, then exit
@@ -267,6 +267,10 @@ test\:unit\:cli:
 # submodules.
 test\:unit\:vmm:
 	@cargo test $(RUST_UNIT_VMM_ARGS) -- $(CARGOTEST_FILTER)
+
+# Stubbed-tool contract tests for the kernel build script; they never compile Linux.
+test\:vmm\:boot:
+	@python3 "$(PROJECT_ROOT)/src/vmm/boot/tests/test_build.py"
 
 # Missing /dev/kvm must fail hardware qualification, not report skipped tests as a pass.
 _ensure-kvm:
@@ -639,3 +643,10 @@ test\:stress\:api-vm-lifecycle-local:
 	BOXLITE_STRESS_P95_MS=$${BOXLITE_STRESS_P95_MS:-60000} \
 	BOXLITE_STRESS_P99_MS=$${BOXLITE_STRESS_P99_MS:-90000} \
 	k6 run --summary-trend-stats 'avg,min,med,p(90),p(95),p(99),max' scripts/test/stress/api-vm-lifecycle.k6.js
+
+PHONY_TARGETS += plugin-boxlite-force
+PLUGIN_PYTHON ?= python3
+plugin-boxlite-force:
+
+test\:unit\:plugins: plugin-boxlite-force
+	@PYTHONDONTWRITEBYTECODE=1 $(PLUGIN_PYTHON) -m unittest discover -s tests/plugins -p 'test_*.py'

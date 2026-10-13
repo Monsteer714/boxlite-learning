@@ -7,14 +7,14 @@
  * and writing it down once is what keeps eleven modules from each having an
  * opinion about it:
  *
- *   images ──→ api, proxy, collector                (addresses for one commit)
+ *   images ──→ api, proxy, collector, registry proxy (addresses for one commit)
  *   network ──→ cluster ──→ hosts
  *           ├──→ database ─┐
  *           ├──→ cache ────┼──→ api
- *           └──→ clickhouse ┴──→ collector ──→ api, proxy, runners
+ *           └──→ clickhouse ┴──→ collector ──→ api, proxy, registry proxy, runners
  *   storage ────────────────────────────────→ api
  *   mail ───────────────────────────────────→ api
- *   api ──→ proxy, runners ──→ alarms
+ *   api ──→ proxy, registry proxy, runners ──→ alarms
  *
  * The providers arrive as one bundle rather than being imported here, so this
  * file names no cloud. That is what makes it testable without one: a bundle of
@@ -26,8 +26,9 @@ import { API_PORT } from './api.ts'
 import type { AlarmProvider, AlarmSubjects } from './alarms.ts'
 import type { Cache, CacheProvider } from './cache.ts'
 import { CACHE_PASSWORD_VARIABLE, cacheEnvironment } from './cache.ts'
-import type { ClickHouse, ClickHouseProvider } from './clickhouse.ts'
+import type { ClickHouse, ClickHouseMode, ClickHouseProvider } from './clickhouse.ts'
 import { CLICKHOUSE_PASSWORD_VARIABLE, clickHouseEnvironment } from './clickhouse.ts'
+import { DEFAULT_CLICKHOUSE_RETENTION_HOURS } from '../../shared/clickhouse-retention.ts'
 import type { Cluster, ClusterProvider, WorkloadHost } from './cluster.ts'
 import type { Collector, CollectorProvider } from './collector.ts'
 import { COLLECTOR_API_KEY_STORE_KEY, COLLECTOR_API_KEY_VARIABLE } from './collector.ts'
@@ -38,13 +39,23 @@ import type { Images, ImagesRequest } from './image.ts'
 import type { Mail, MailProvider } from './mail.ts'
 import { mailEnvironment } from './mail.ts'
 import type { Network, NetworkProvider } from './network.ts'
+import type { RegistryProxy, RegistryProxyProvider } from './registry-proxy.ts'
+import {
+  REGISTRY_PROXY_CONTROL_PLANE_VARIABLE,
+  REGISTRY_PROXY_PORT,
+  REGISTRY_PROXY_PORT_VARIABLE,
+} from './registry-proxy.ts'
+import { runnerApiUrl } from './runner-boot.ts'
 import type { RunnerAssignment, RunnerProvider, RunnerSlot, Runners } from './runners.ts'
 import { API_RUNNER_TOKEN_VARIABLE } from './runners.ts'
 import type { Storage, StorageProvider } from './storage.ts'
 import type { DeployConfig } from '../src/config.ts'
 
 
-/** The containerised workloads. The runner is a machine and is placed directly. */
+/**
+ * The containerised workloads the cluster places. The runner is a machine and
+ * is placed directly; the registry proxy is placed by its own provider.
+ */
 const CONTAINER_ROLES = ['api', 'proxy', 'otel-collector'] as const
 
 /**
@@ -52,7 +63,10 @@ const CONTAINER_ROLES = ['api', 'proxy', 'otel-collector'] as const
  * `mbuild.config.json` declares. A missing component is a build that did not
  * publish rather than an address this file could invent.
  */
-const imageFor = (images: Images, component: 'api' | 'proxy' | 'otel-collector'): $util.Input<string> => {
+const imageFor = (
+  images: Images,
+  component: 'api' | 'proxy' | 'otel-collector' | 'registry-proxy',
+): $util.Input<string> => {
   const address = images[component]
   if (!address) throw new Error(`mbuild published no ${component} image for this commit`)
   return address
@@ -60,6 +74,8 @@ const imageFor = (images: Images, component: 'api' | 'proxy' | 'otel-collector')
 
 /** What one deploy decides, as opposed to what `mdeploy.config.json` declares. */
 export type StackInputs = {
+  /** `CLICKHOUSE_RETENTION_HOURS` from the stage, or null when it set none. */
+  clickHouseRetentionHours: number | null
   stage: string
   /** The commit being deployed. Every container runs the same one. */
   tag: string
@@ -125,6 +141,12 @@ export type StackProviders = {
   api: (input: { dependencies: ApiDependencies; network: Network }) => ApiProvider
   edge: (input: { host: WorkloadHost; network: Network; dependsOn: any[] }) => EdgeProvider
   /**
+   * No host, like the runner: on the cloud that deploys it this is a managed
+   * service rather than a cluster task, so it takes its placement from the
+   * network directly. The other cloud answers with the inactive handle.
+   */
+  registryProxy: (input: { network: Network; dependsOn: any[] }) => RegistryProxyProvider
+  /**
    * One host's registration token, minted so it survives the next deploy.
    *
    * A provider member rather than a `new random.RandomPassword` here, because
@@ -187,6 +209,18 @@ const assertOneChannelPerName = ({
   }
 }
 
+/**
+ * Retention is resolved here, where the mode is known. Only a self-hosted
+ * ClickHouse applies it; a value set for a managed or disabled one would be
+ * silently dropped, so it is refused instead.
+ */
+const clickHouseRetentionFor = (mode: ClickHouseMode, configured: number | null): number => {
+  if (configured !== null && mode !== 'self-hosted') {
+    throw new Error(`CLICKHOUSE_RETENTION_HOURS cannot be set when deploy.clickhouse.mode is ${mode}`)
+  }
+  return configured ?? DEFAULT_CLICKHOUSE_RETENTION_HOURS
+}
+
 /** What the deploy reports, and what a post-deploy check reads. */
 export type StackOutputs = {
   apiUrl: $util.Output<string>
@@ -196,6 +230,8 @@ export type StackOutputs = {
   storageName: $util.Output<string>
   collectorUrl: $util.Output<string>
   clickHouseId: $util.Output<string> | null
+  /** Null on a cloud that does not deploy one, as `clickHouseId` is for a disabled store. */
+  registryProxyUrl: $util.Output<string> | null
   runnerIds: $util.Output<string>[]
 }
 
@@ -215,7 +251,10 @@ export const deployStack = ({
   const cluster: Cluster = providers.cluster({ network })({ roles: CONTAINER_ROLES })
   const database: Database = providers.database({ network })(config.database)
   const cache: Cache = providers.cache({ network })(config.cache)
-  const clickhouse: ClickHouse = providers.clickhouse({ network })(config.clickhouse)
+  const clickhouse: ClickHouse = providers.clickhouse({ network })({
+    ...config.clickhouse,
+    retentionHours: clickHouseRetentionFor(config.clickhouse.mode, inputs.clickHouseRetentionHours),
+  })
 
   /*
    * The network's own rules, which reach every workload through the cluster.
@@ -417,6 +456,34 @@ export const deployStack = ({
     secrets: inputs.proxySecrets,
   })
 
+  /*
+   * The registry proxy, after the API because it asks the API about every
+   * caller: a runner's key is an opaque column, not a signed token, so there is
+   * no checking one without the control plane answering.
+   *
+   * Its whole environment is the stack's. It holds no credentials in this
+   * release and reads nothing a stage would tune, so there is no store group
+   * for it — one with nothing in it would be a place for a stale copy to sit.
+   *
+   * Telemetry on, for the reason the proxy's note above gives: the binary
+   * declares both switches without a default, and one left unset ships
+   * nothing while looking healthy.
+   */
+  const registryProxy: RegistryProxy = providers.registryProxy({
+    network,
+    dependsOn: [...placed, ...api.ready],
+  })({
+    image: imageFor(images, 'registry-proxy'),
+    environment: {
+      OTEL_LOGGING_ENABLED: 'true',
+      OTEL_TRACING_ENABLED: 'true',
+      OTEL_EXPORTER_OTLP_ENDPOINT: collector.otlpUrl,
+      ENVIRONMENT: inputs.stage,
+      [REGISTRY_PROXY_PORT_VARIABLE]: String(REGISTRY_PROXY_PORT),
+      [REGISTRY_PROXY_CONTROL_PLANE_VARIABLE]: api.address.apply(runnerApiUrl),
+    },
+  })
+
   const runnerEnvironment = {
     ...inputs.runnerEnvironment,
     OTEL_EXPORTER_OTLP_ENDPOINT: collector.otlpUrl,
@@ -475,6 +542,7 @@ export const deployStack = ({
     storageName: storage.name,
     collectorUrl: collector.otlpUrl,
     clickHouseId: clickhouse.active ? clickhouse.id : null,
+    registryProxyUrl: registryProxy.active ? registryProxy.url : null,
     runnerIds: runners.ids,
   }
 }

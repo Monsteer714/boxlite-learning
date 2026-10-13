@@ -1219,6 +1219,10 @@ impl RuntimeImpl {
     /// the canonical `boxes_dir/<box_id>` path. The box is persisted with the
     /// given `initial_status` (typically `Stopped` for clone/import operations).
     ///
+    /// `resolved_image` is what the staged disk was built from, when the caller
+    /// knows. It has to be passed in: the new box's first start reuses that
+    /// disk, and a start that reuses a disk records nothing of its own.
+    ///
     /// On failure, cleans up the allocated lock and box directory.
     pub(crate) async fn provision_box(
         self: &Arc<Self>,
@@ -1226,6 +1230,7 @@ impl RuntimeImpl {
         name: Option<String>,
         options: BoxOptions,
         initial_status: BoxStatus,
+        resolved_image: Option<crate::images::ResolvedImage>,
     ) -> BoxliteResult<LiteBox> {
         use crate::litebox::config::ContainerRuntimeConfig;
 
@@ -1257,6 +1262,7 @@ impl RuntimeImpl {
 
         let mut state = BoxState::new();
         state.set_status(initial_status);
+        state.resolved_image = resolved_image;
 
         let lock_id = self.lock_manager.allocate()?;
         state.set_lock_id(lock_id);
@@ -1764,6 +1770,14 @@ fn reject_local_unsupported_options(options: &BoxOptions) -> BoxliteResult<()> {
         )));
     }
 
+    // The local runtime shares no typed mounts yet(TODO): refused here, before
+    // the image pull and the box record, rather than dropped at boot.
+    if !options.mounts.is_empty() {
+        return Err(BoxliteError::Unsupported(
+            "typed mounts are not supported by the local runtime yet".into(),
+        ));
+    }
+
     Ok(())
 }
 
@@ -2005,6 +2019,24 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("my-data"), "{message}");
         assert!(message.contains("REST runtime"), "{message}");
+    }
+
+    /// Until the local runtime shares typed mounts, create refuses them rather
+    /// than booting a box without them.
+    #[tokio::test]
+    async fn local_runtime_refuses_typed_mounts_until_it_shares_them() {
+        use crate::runtime::options::MountSpec;
+
+        let options = BoxOptions {
+            mounts: vec![MountSpec::bind_mount("/tmp/data", "/data")],
+            ..Default::default()
+        };
+        let error = sanitize_local_options(&ExperimentalFeatures::default(), options)
+            .await
+            .expect_err("the local runtime shares no typed mounts yet");
+
+        assert!(matches!(error, BoxliteError::Unsupported(_)), "{error:?}");
+        assert!(error.to_string().contains("typed mounts"), "{error}");
     }
 
     #[test]

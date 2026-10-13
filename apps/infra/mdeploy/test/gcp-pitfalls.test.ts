@@ -40,10 +40,23 @@ import {
   PSC_NAT_CIDR,
   SUBNET_CIDR,
 } from '../stack/providers/gcp/network.ts'
-import { BOOT_DISK_TYPE, MACHINE as RUNNER_MACHINE } from '../stack/providers/gcp/runners.ts'
+import {
+  DATA_DISK,
+  DATA_DISK_DEVICE,
+  DISK_TYPE as RUNNER_DISK,
+  MACHINE as RUNNER_MACHINE,
+  PREPARE_HOME,
+} from '../stack/providers/gcp/runners.ts'
+import { RUNNER_HOME } from '../stack/runner-boot.ts'
 import { apiPrefixRouteRules } from '../stack/providers/gcp/api.ts'
 import { isMissingNeg } from '../stack/providers/gcp/edge.ts'
 import { instanceFor } from 'naming'
+import {
+  REGISTRY_PROXY_CONTROL_PLANE_VARIABLE,
+  REGISTRY_PROXY_HEALTH_PATH,
+  REGISTRY_PROXY_PORT,
+  REGISTRY_PROXY_PORT_VARIABLE,
+} from '../stack/registry-proxy.ts'
 
 /*
  * The committed example, not this machine's stage file.
@@ -686,8 +699,10 @@ test('the telemetry database admits both of its callers, because both egress fro
    */
   assert.match(sourceOf('api'), /networkInterfaces: \[\{ subnetwork: placement\.egressSubnetwork \}\]/)
   assert.match(sourceOf('collector'), /networkInterfaces: \[\{ subnetwork: placement\.egressSubnetwork \}\]/)
-  // And nothing else reads it, so the address stays beside its clients.
-  for (const module of ['api', 'collector', 'runners', 'clickhouse', 'edge']) {
+  // And nothing else reads it, so the address stays beside its clients — and
+  // the registry proxy, a Cloud Run service that calls no VM, stays out of the
+  // range the runner and ClickHouse rules admit.
+  for (const module of ['api', 'collector', 'runners', 'clickhouse', 'edge', 'registry-proxy']) {
     const reads = (sourceOf(module).match(/placement\.egressSubnetwork/g) ?? []).length
     assert.equal(reads, module === 'api' || module === 'collector' ? 1 : 0, `${module} reads egressSubnetwork ${reads}x`)
   }
@@ -893,7 +908,7 @@ test('the hosts may read the staged binary, and only while one is being installe
   assert.match(source, /role: 'roles\/storage\.objectViewer'/)
   assert.match(source, /resource\.name\.startsWith\("projects\/_\/buckets\/\$\{artifactsBucket\}\/objects\/runner\/"\)/)
   // And the host waits for it: a boot script that fetched before the binding
-  // existed would download nothing, and that boot never happens again.
+  // existed would download nothing, and nothing retries it until the host restarts.
   assert.match(source, /dependsOn: \[\.\.\.dependsOn, \.\.\.staged\]/)
 })
 
@@ -940,7 +955,7 @@ test('the upgrade policy selects hosts by the label those hosts actually carry',
 
 test('a host that cannot be told the new control-plane name is converged to it', () => {
   /*
-   * `BOXLITE_API_URL` is written once, at first boot. `metadataStartupScript`
+   * `BOXLITE_API_URL` is written by the boot script, which never changes. `metadataStartupScript`
    * is in `ignoreChanges` and the instance is protected, so a stage that
    * changes its domain strands every host it already has: the public record is
    * renamed, the private zone is rebuilt under the new name, and the old one
@@ -1105,7 +1120,7 @@ test('every runner size is a family that can nest, and none is one that cannot',
 test('the boot disk is the one N4 attaches, and no Persistent Disk is asked for', () => {
   // N4 does not take Persistent Disk at all, so `pd-balanced` is a create-time
   // refusal rather than a slower disk.
-  assert.equal(BOOT_DISK_TYPE, 'hyperdisk-balanced')
+  assert.equal(RUNNER_DISK, 'hyperdisk-balanced')
   assert.equal(sourceOf('runners').includes("'pd-"), false)
 })
 
@@ -1117,7 +1132,7 @@ test('every GCE host in the bundle names a machine family and a disk that pair',
    * disk rather than the family that cannot take it.
    */
   const hosts = [
-    { module: 'runners', machines: Object.values(RUNNER_MACHINE), disk: BOOT_DISK_TYPE },
+    { module: 'runners', machines: Object.values(RUNNER_MACHINE), disk: RUNNER_DISK },
     { module: 'clickhouse', machines: Object.values(CLICKHOUSE_MACHINE), disk: CLICKHOUSE_DISK },
   ]
   for (const { module, machines, disk } of hosts) {
@@ -1129,10 +1144,74 @@ test('every GCE host in the bundle names a machine family and a disk that pair',
   }
 })
 
+test('every runner size states a data disk GCP will create and its machine can use', () => {
+  /*
+   * Hyperdisk Balanced bounds a disk's IOPS by its size and its throughput by its
+   * IOPS, and refuses a create outside them; an N4 caps what all of its Hyperdisk
+   * can draw together, and anything stated above that is billed and never reached.
+   * docs.cloud.google.com/compute/docs/disks/hd-types/hyperdisk-balanced and
+   * .../disks/hyperdisk-perf-limits.
+   */
+  const CAP: Record<string, { iops: number; throughputMiBps: number }> = {
+    'n4-standard-4': { iops: 30_000, throughputMiBps: 240 },
+    'n4-standard-8': { iops: 30_000, throughputMiBps: 480 },
+    'n4-standard-16': { iops: 80_000, throughputMiBps: 1_200 },
+  }
+  for (const [size, machine] of Object.entries(RUNNER_MACHINE)) {
+    const disk = DATA_DISK[size as keyof typeof DATA_DISK]
+    assert.ok(disk, `${size} has no data disk`)
+    const cap = CAP[machine]
+    assert.ok(cap, `no Hyperdisk cap is recorded for ${machine}`)
+    assert.ok(
+      disk.iops >= 3_000 && disk.iops <= Math.min(500 * disk.sizeGb, 160_000),
+      `${size}: ${disk.iops} IOPS is out of bounds for ${disk.sizeGb} GiB`,
+    )
+    assert.ok(
+      disk.throughputMiBps >= Math.max(140, disk.iops / 256) && disk.throughputMiBps <= Math.min(2_400, disk.iops / 4),
+      `${size}: ${disk.throughputMiBps} MiB/s is out of bounds for ${disk.iops} IOPS`,
+    )
+    assert.ok(
+      disk.iops <= cap.iops && disk.throughputMiBps <= cap.throughputMiBps,
+      `${size} states more than ${machine} can draw`,
+    )
+  }
+})
+
+test('a runner keeps box state on a disk no deploy shrinks, replaces or detaches', () => {
+  /*
+   * A disk grown online reads back larger than the size the code states: the
+   * provider replaces a disk whose size went down, and `protect` turns that into
+   * an error. The attachment is fixed at create because the provider applies any
+   * edit to one by detaching the disk from the running host.
+   */
+  const source = sourceOf('runners')
+  const disks = blocksOpenedBy(source, /new gcp\.compute\.Disk\(/g).map(withoutComments)
+  assert.equal(disks.length, 1, `expected one data disk per host, found ${disks.length}`)
+  const disk = disks[0] as string
+  assert.match(disk, /ignoreChanges: \['size', 'provisionedIops', 'provisionedThroughput'\]/)
+  assert.match(disk, /protect: true/)
+  assert.match(disk, /type: DISK_TYPE/)
+  assert.match(disk, /name: runnerDataDiskNameFor\(/)
+  const instances = blocksOpenedBy(source, /new gcp\.compute\.Instance\(/g).map(withoutComments)
+  assert.equal(instances.length, 1, `expected one host constructor, found ${instances.length}`)
+  const instance = instances[0] as string
+  assert.match(instance, /attachedDisks: \[\{ source: dataDisk\.id, deviceName: DATA_DISK_DEVICE \}\]/)
+  assert.match(instance, /ignoreChanges: \[[^\]]*'attachedDisks'[^\]]*\]/)
+})
+
+test('a host mounts the disk it was given, at the home the runner reads', () => {
+  // One device name for the attachment and the mount, one home for the mount
+  // and the runner: a second spelling of either is a host that never finds its
+  // disk, or a runner that writes beside it.
+  assert.match(PREPARE_HOME, new RegExp(`^DATA_DEVICE='/dev/disk/by-id/google-${DATA_DISK_DEVICE}'$`, 'm'))
+  assert.match(PREPARE_HOME, new RegExp(`^DATA_HOME='${RUNNER_HOME}'$`, 'm'))
+  assert.match(withoutComments(sourceOf('runners')), /prepareHome: PREPARE_HOME,/)
+})
+
 test('no minCpuPlatform is asked of a family that has exactly one', () => {
   // The floor N2 needed. On N4 naming an older platform is rejected rather than
   // read as a minimum already met. The argument, not the prose: the comment
-  // above `BOOT_DISK_TYPE` says why it is gone, and should keep saying so.
+  // above `DISK_TYPE` says why it is gone, and should keep saying so.
   assert.equal(/^\s*minCpuPlatform:/m.test(sourceOf('runners')), false)
 })
 
@@ -1664,4 +1743,92 @@ test('the runner is fenced off one address, not off the internet, and only once 
   assert.match(source, /targetServiceAccounts: \[runnerAccount\]/)
   assert.equal(/destinationRanges: \['0\.0\.0\.0\/0'\]/.test(source), false, 'the deny covers the internet')
   assert.match(source, /\{ dependsOn: \[internalForwarding, internalRecord\] \}/)
+})
+
+// ── the registry proxy ──────────────────────────────────────────────────────
+
+test('the registry proxy is invocable by everyone, because its callers cannot carry an identity', () => {
+  /*
+   * A caller here is the runtime pulling an image, and the registry protocol's
+   * own Authorization header already carries the runner's Basic credential.
+   * There is no second header for a Google identity token, so a named invoker
+   * authorises nothing that ever calls — every service account reaches it and
+   * the runtime that matters is refused 403.
+   */
+  assert.match(sourceOf('registry-proxy'), /member: 'allUsers'/)
+})
+
+test('and its ingress is internal, which is the other half of that pair', () => {
+  /*
+   * With everyone as invoker, the ingress is the whole restriction. Widening it
+   * is a one-word edit that puts an authenticated relay on the internet, and no
+   * type or apply would object.
+   */
+  const ingress = /ingress: '([A-Z_]+)'/.exec(sourceOf('registry-proxy'))?.[1]
+  assert.ok(ingress, 'the registry proxy declares no ingress at all')
+  assert.ok(
+    ['INGRESS_TRAFFIC_INTERNAL_ONLY', 'INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER'].includes(ingress),
+    `allUsers may invoke the registry proxy and its ingress is ${ingress}; that pair is a public relay`,
+  )
+})
+
+test('the registry proxy may stream a response for an hour', () => {
+  /*
+   * A blob is one response and a large layer takes minutes. Cloud Run's default
+   * request deadline is five, and a pull cut off there fails with a truncated
+   * body rather than a timeout the runtime could recognise and retry.
+   */
+  assert.match(sourceOf('registry-proxy'), /timeout: '3600s'/)
+})
+
+test('the registry proxy is spoken to over HTTP/2', () => {
+  /*
+   * Cloud Run caps an HTTP/1 response at 32 MiB unless it is chunked, and a
+   * blob relayed with the upstream's own Content-Length is not. Over HTTP/1
+   * every layer past that size fails here and nowhere else — locally, in every
+   * test, it streams fine.
+   */
+  assert.match(sourceOf('registry-proxy'), /ports: \[\{ name: 'h2c', containerPort: REGISTRY_PROXY_PORT \}\]/)
+})
+
+test('the registry proxy runs as its own account, not the control plane’s', () => {
+  /*
+   * What it holds differs from what the API holds, and will differ more: once
+   * registry credentials exist, this is the one process that reads them. An
+   * account shared with the API would hand the control plane those grants too.
+   */
+  const index = readFileSync(fileURLToPath(new URL('../stack/providers/gcp/index.ts', import.meta.url)), 'utf8')
+  const wiring = /registryProxy: \(\{ network, dependsOn \}\) =>[\s\S]*?\}\),/.exec(index)?.[0]
+  assert.ok(wiring, 'the GCP bundle wires no registry proxy')
+  assert.match(wiring, /placement: placement\(network, 'registry-proxy'\)/)
+  assert.doesNotMatch(wiring, /placement\(network, 'api'\)/)
+})
+
+test('the registry proxy’s contract matches the binary it deploys', () => {
+  /*
+   * The port, the control-plane variable and the health route are said twice:
+   * once in `stack/registry-proxy.ts`, once in the Go binary they describe.
+   * Each language checks its own half, and nothing checks that the halves
+   * agree — so a default changed on one side deploys a revision that never
+   * passes its first probe, or one that asks no control plane at all.
+   */
+  const service = fileURLToPath(new URL('../../../image-service/', import.meta.url))
+  const config = readFileSync(`${service}cmd/registry-proxy/config/config.go`, 'utf8')
+  const server = readFileSync(`${service}internal/proxy/server.go`, 'utf8')
+
+  assert.match(
+    config,
+    new RegExp(`envconfig:"${REGISTRY_PROXY_PORT_VARIABLE}" default:"${REGISTRY_PROXY_PORT}"`),
+    `the binary does not listen on ${REGISTRY_PROXY_PORT} by default under ${REGISTRY_PROXY_PORT_VARIABLE}`,
+  )
+  assert.match(
+    config,
+    new RegExp(`envconfig:"${REGISTRY_PROXY_CONTROL_PLANE_VARIABLE}"`),
+    `the binary does not read its control plane from ${REGISTRY_PROXY_CONTROL_PLANE_VARIABLE}`,
+  )
+  assert.match(
+    server,
+    new RegExp(`HealthPath = "${REGISTRY_PROXY_HEALTH_PATH}"`),
+    `the binary serves no health route at ${REGISTRY_PROXY_HEALTH_PATH}`,
+  )
 })
