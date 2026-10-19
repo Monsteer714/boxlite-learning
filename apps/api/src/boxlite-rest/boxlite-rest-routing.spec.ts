@@ -166,6 +166,15 @@ describe('BoxLite REST routing', () => {
     expect((await response.json()).capabilities.inbound_update_enabled).toBe(true)
   })
 
+  // The Rust REST client refuses exec `detach` unless this flag is set.
+  it('advertises exec detach in /v1/config', async () => {
+    await startRoutingTestApp()
+
+    const response = await get('/api/v1/config')
+
+    expect((await response.json()).capabilities.exec_detach_enabled).toBe(true)
+  })
+
   it('answers image usage on its own route, with or without a routing prefix', async () => {
     const catalog = {
       usage: jest.fn().mockResolvedValue({ count: 1, limit: 20, knownBytes: 0 }),

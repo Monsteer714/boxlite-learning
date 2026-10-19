@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -306,5 +307,24 @@ func TestBoxliteExecSignalClosedReturns409(t *testing.T) {
 	// Should be 409 (closed/conflict), not 404
 	if w.Code != http.StatusConflict {
 		t.Fatalf("signal on closed exec: expected 409, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// The request's detach must reach the exec start options; an unknown JSON
+// field would be dropped silently and the exec reaped like any other.
+func TestExecRequestForwardsDetach(t *testing.T) {
+	decode := func(body string) ExecRequest {
+		t.Helper()
+		var req ExecRequest
+		if err := json.Unmarshal([]byte(body), &req); err != nil {
+			t.Fatalf("decode %s: %v", body, err)
+		}
+		return req
+	}
+	plain := decode(`{"command":"sleep","args":["60"]}`).startOptions()
+	detached := decode(`{"command":"sleep","args":["60"],"detach":true}`).startOptions()
+
+	if reflect.DeepEqual(plain, detached) {
+		t.Fatalf("detach was dropped between the request and the start options: %+v", detached)
 	}
 }

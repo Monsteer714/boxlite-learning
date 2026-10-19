@@ -21,6 +21,9 @@ export class BoxliteConfigController {
         export_enabled: false,
         import_enabled: false,
         inbound_update_enabled: true,
+        // The runner forwards `detach` to the SDK and exempts detached
+        // execs from its reaper; every cloud box is detached.
+        exec_detach_enabled: true,
       },
     }
   }

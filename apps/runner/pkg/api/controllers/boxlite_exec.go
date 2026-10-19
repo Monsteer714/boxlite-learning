@@ -21,6 +21,27 @@ type ExecRequest struct {
 	TimeoutSeconds *float64          `json:"timeout_seconds"`
 	WorkingDir     *string           `json:"working_dir"`
 	TTY            bool              `json:"tty"`
+	Detach         bool              `json:"detach"`
+}
+
+func (req ExecRequest) startOptions() boxlite.StartOptions {
+	opts := boxlite.StartOptions{
+		Command: req.Command,
+		Args:    req.Args,
+		Env:     req.Env,
+		TTY:     req.TTY,
+		Detach:  req.Detach,
+	}
+	if req.WorkingDir != nil {
+		opts.WorkingDir = *req.WorkingDir
+	}
+	if req.TimeoutSeconds != nil {
+		// The Rust C-FFI treats `timeout_secs <= 0` as unbounded (see
+		// `sdks/c/src/exec/command.rs`), so a 0 or negative value here
+		// is equivalent to omitting the field — pass it straight through.
+		opts.Timeout = time.Duration(*req.TimeoutSeconds * float64(time.Second))
+	}
+	return opts
 }
 
 type ExecResponse struct {
@@ -57,23 +78,7 @@ func BoxliteExec(ctx *gin.Context) {
 		return
 	}
 
-	startOpts := boxlite.StartOptions{
-		Command: req.Command,
-		Args:    req.Args,
-		Env:     req.Env,
-		TTY:     req.TTY,
-	}
-	if req.WorkingDir != nil {
-		startOpts.WorkingDir = *req.WorkingDir
-	}
-	if req.TimeoutSeconds != nil {
-		// The Rust C-FFI treats `timeout_secs <= 0` as unbounded (see
-		// `sdks/c/src/exec/command.rs`), so a 0 or negative value here
-		// is equivalent to omitting the field — pass it straight through.
-		startOpts.Timeout = time.Duration(*req.TimeoutSeconds * float64(time.Second))
-	}
-
-	execId, err := execManager.Start(ctx.Request.Context(), bx, boxId, startOpts)
+	execId, err := execManager.Start(ctx.Request.Context(), bx, boxId, req.startOptions())
 	if err != nil {
 		// Classify so a stopped / wrong-state box surfaces as 4xx, not
 		// 500. Without this the box-stopped case leaks

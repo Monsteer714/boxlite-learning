@@ -189,6 +189,45 @@ func TestCleanupLoopRespectsHardCap(t *testing.T) {
 	}
 }
 
+// A detached exec has no client and outlives the lifetime cap; it ends
+// with its box or an explicit DELETE. A plain exec under the same policy
+// is still signaled and then killed.
+func TestCleanupLoopKeepsDetachedExec(t *testing.T) {
+	m := newQuietManager(t)
+	m.SetReapingForTest(50*time.Millisecond, 20*time.Millisecond, 10*time.Minute)
+
+	t0 := time.Now()
+	detachedStub := &stubExecHandle{}
+	detached := newManagedExec("detached-1", "box-1", StartOptions{Command: "sleep", Detach: true}, t0)
+	detached.execution = detachedStub
+	m.Register(detached.ID, detached)
+
+	plainStub := &stubExecHandle{}
+	plain := newManagedExec("plain-1", "box-1", StartOptions{Command: "sleep"}, t0)
+	plain.execution = plainStub
+	m.Register(plain.ID, plain)
+
+	m.runCleanupOnce(t0.Add(70 * time.Millisecond))
+	m.runCleanupOnce(t0.Add(48 * time.Hour))
+
+	if signals, killed := detachedStub.snapshot(); len(signals) != 0 || killed != 0 {
+		t.Fatalf("detached exec was reaped: signals=%v killed=%d", signals, killed)
+	}
+	if _, tracked := m.Get(detached.ID); !tracked {
+		t.Fatalf("detached exec was evicted")
+	}
+	if signals, killed := plainStub.snapshot(); len(signals) != 1 || killed != 1 {
+		t.Fatalf("plain exec should get SIGHUP then the cap kill: signals=%v killed=%d", signals, killed)
+	}
+
+	if err := m.Kill(detached.ID); err != nil {
+		t.Fatalf("DELETE of a detached exec failed: %v", err)
+	}
+	if _, killed := detachedStub.snapshot(); killed != 1 {
+		t.Fatalf("DELETE should kill a detached exec, killed=%d", killed)
+	}
+}
+
 func TestReattachResetsEscalationFlags(t *testing.T) {
 	m := newQuietManager(t)
 

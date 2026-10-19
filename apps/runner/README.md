@@ -397,6 +397,12 @@ configurable via environment variables.
 | After SIGHUP, idle > shutdown grace | SIGTERM | 30 s | `BOXLITE_SHUTDOWN_GRACE` |
 | After SIGTERM, idle > shutdown grace | SIGKILL + evict | 30 s | `BOXLITE_SHUTDOWN_GRACE` |
 
+A detached exec (`"detach": true` on `POST /exec`) skips the cap and the
+three signal rows: it runs without a client until it exits, its box
+stops, or `DELETE /executions/:id` kills it. Its finished entry is
+still evicted after 5 min. The runner creates every box with
+`WithDetach(true)`, so the box-level precondition always holds here.
+
 Reattaching inside the reconnect grace resets `SignaledHUP` and
 `SignaledTERM` so a subsequent disconnect starts a fresh clock.
 Durations accept Go's `time.ParseDuration` syntax (e.g. `5m`, `30s`,

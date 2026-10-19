@@ -97,7 +97,10 @@ type ManagedExec struct {
 	ExitCode  int
 	Err       error
 	TTY       bool
-	created   time.Time
+	// Detached execs are bounded by their box: the reaper skips the
+	// lifetime cap and orphan escalation for them.
+	Detached bool
+	created  time.Time
 
 	// handleMu serializes all operations on `execution` and `stdinW`
 	// against the deferred Close in the wait goroutine. Without this,
@@ -343,19 +346,22 @@ type StartOptions struct {
 	WorkingDir string
 	Timeout    time.Duration
 	TTY        bool
+	// Detach keeps the exec running without an attached client, for as
+	// long as its box runs. The box must be detached.
+	Detach bool
 }
 
-func (m *ExecManager) Start(ctx context.Context, bx *boxlite.Box, boxID string, opts StartOptions) (string, error) {
-	id := uuid.New().String()
-
-	now := time.Now()
-	exec := &ManagedExec{
+// newManagedExec builds the registry entry Start inserts, before the
+// SDK handle is wired in.
+func newManagedExec(id, boxID string, opts StartOptions, now time.Time) *ManagedExec {
+	return &ManagedExec{
 		ID:        id,
 		BoxID:     boxID,
 		stdoutBus: newStreamBus(streamBusBacklogCap),
 		stderrBus: newStreamBus(streamBusBacklogCap),
 		Done:      make(chan struct{}),
 		TTY:       opts.TTY,
+		Detached:  opts.Detach,
 		created:   now,
 		// Start the reap clock from creation so a client that never
 		// calls /attach still escalates through SIGHUP→SIGTERM→SIGKILL
@@ -363,6 +369,11 @@ func (m *ExecManager) Start(ctx context.Context, bx *boxlite.Box, boxID string, 
 		// MarkConnected() zeros LastDisconnectAt, pausing the clock.
 		LastDisconnectAt: now,
 	}
+}
+
+func (m *ExecManager) Start(ctx context.Context, bx *boxlite.Box, boxID string, opts StartOptions) (string, error) {
+	id := uuid.New().String()
+	exec := newManagedExec(id, boxID, opts, time.Now())
 
 	// Pass the streamBus sinks directly to the SDK — no io.Pipe between
 	// the producer and the fan-out. The SDK's pump calls bus.Write, which
@@ -376,6 +387,7 @@ func (m *ExecManager) Start(ctx context.Context, bx *boxlite.Box, boxID string, 
 		Env:        opts.Env,
 		WorkingDir: opts.WorkingDir,
 		Timeout:    opts.Timeout,
+		Detach:     opts.Detach,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to start execution: %w", err)
@@ -606,8 +618,9 @@ func (m *ExecManager) evaluateExec(now time.Time, e *ManagedExec, reconnectGrace
 	default:
 	}
 
-	// 2) Hard cap — kill regardless of attach state.
-	if now.Sub(e.created) > maxLifetime {
+	// 2) Hard cap — kill regardless of attach state. A detached exec
+	// ends with its box instead.
+	if !e.Detached && now.Sub(e.created) > maxLifetime {
 		e.attachMu.Lock()
 		e.ReapingKill = true
 		e.attachMu.Unlock()
@@ -627,7 +640,11 @@ func (m *ExecManager) evaluateExec(now time.Time, e *ManagedExec, reconnectGrace
 		return
 	}
 
-	// 3) Orphan escalation.
+	// 3) Orphan escalation. A detached exec is meant to run without a
+	// client.
+	if e.Detached {
+		return
+	}
 	action := e.tryEscalate(now, reconnectGrace, shutdownGrace)
 	switch action {
 	case escalateNone:
