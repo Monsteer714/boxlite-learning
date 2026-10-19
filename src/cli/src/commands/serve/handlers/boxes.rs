@@ -36,7 +36,7 @@ pub(in crate::commands::serve) async fn create_box(
         );
     }
 
-    let options = match build_box_options(&req) {
+    let options = match build_box_options(&req, &state.host_paths) {
         Ok(options) => options,
         Err(e) => {
             return error_response(

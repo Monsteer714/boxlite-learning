@@ -4,9 +4,11 @@
 //! over HTTP so that `Boxlite.rest()` clients can connect.
 
 mod handlers;
+mod host_paths;
 mod types;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -33,6 +35,7 @@ use boxlite::{
 use crate::cli::GlobalFlags;
 use crate::defaults::{LOCAL_SERVE_HOST, LOCAL_SERVE_PORT};
 
+use self::host_paths::HostPathPolicy;
 use self::types::{
     BoxResponse, CreateBoxRequest, ErrorBody, ErrorDetail, ExecRequest, NetworkInfoResponse,
 };
@@ -70,6 +73,11 @@ pub struct ServeArgs {
         value_parser = parse_api_key
     )]
     pub api_key: Option<String>,
+
+    /// Directory whose direct entries a create may bind as `volumes[].host_path`
+    /// from this machine; repeatable, never nested. Unset refuses every host path.
+    #[arg(long = "host-path-root", value_name = "DIR")]
+    pub host_path_roots: Vec<PathBuf>,
 }
 
 // ============================================================================
@@ -87,6 +95,8 @@ struct AppState {
     /// Optional expected API key (`--api-key` / `$BOXLITE_SERVE_API_KEY`).
     /// `None` ⇒ permissive (no auth enforced).
     api_key: Option<String>,
+    /// Directories `volumes[].host_path` may bind from (`--host-path-root`).
+    host_paths: HostPathPolicy,
     /// Lifecycle deadlines per box, in seconds.
     ///
     /// Held here rather than in `BoxOptions` because the engine accepts neither
@@ -1131,7 +1141,10 @@ fn volume_info_to_response(info: &boxlite::runtime::types::VolumeInfo) -> types:
     }
 }
 
-fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::BoxliteError> {
+fn build_box_options(
+    req: &CreateBoxRequest,
+    host_paths: &HostPathPolicy,
+) -> Result<BoxOptions, boxlite::BoxliteError> {
     let rootfs = if let Some(ref path) = req.rootfs_path {
         RootfsSpec::RootfsPath(path.clone())
     } else {
@@ -1195,13 +1208,7 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
     // uniformly. Operators who want a different policy run the
     // server with a different default; clients cannot relax it.
 
-    if let Some(volumes) = &req.volumes
-        && !volumes.is_empty()
-    {
-        return Err(boxlite::BoxliteError::InvalidArgument(
-            "managed volumes are not supported by boxlite serve".into(),
-        ));
-    }
+    let volumes = host_paths.resolve(req.volumes.as_deref().unwrap_or_default())?;
 
     // An empty name or value can never substitute anything. Reject at the
     // boundary so this server agrees with the Cloud API's IsNotEmpty and the
@@ -1242,6 +1249,7 @@ fn build_box_options(req: &CreateBoxRequest) -> Result<BoxOptions, boxlite::Boxl
 
     Ok(BoxOptions {
         rootfs,
+        volumes,
         cpus: req.cpus,
         memory_mib: req.memory_mib,
         disk_size_gb: req.disk_size_gb,
@@ -1955,6 +1963,7 @@ fn build_router(state: Arc<AppState>) -> Router {
 
 pub async fn execute(args: ServeArgs, global: &GlobalFlags) -> anyhow::Result<()> {
     check_bind_auth(&args.host, args.api_key.as_deref())?;
+    let host_paths = HostPathPolicy::from_roots(&args.host_path_roots)?;
 
     // A server owns an embedded runtime. Client connection settings must not
     // turn it into a proxy merely because a credential profile or REST URL is
@@ -1967,6 +1976,7 @@ pub async fn execute(args: ServeArgs, global: &GlobalFlags) -> anyhow::Result<()
         boxes: RwLock::new(HashMap::new()),
         executions: RwLock::new(HashMap::new()),
         api_key: args.api_key.clone(),
+        host_paths,
         lifecycle: RwLock::new(HashMap::new()),
         last_activity: RwLock::new(HashMap::new()),
     });
@@ -2003,6 +2013,7 @@ mod tests {
     use boxlite::runtime::options::NetworkSpec;
     use std::time::Duration;
 
+    mod host_paths;
     mod ssh;
 
     // --- API-key auth decision (pure; no runtime/network needed) ---
@@ -2131,14 +2142,18 @@ mod tests {
             serde_json::from_str(r#"{"image": "alpine:latest", "tty": true}"#)
                 .expect("body with tty must deserialize");
         assert!(
-            build_box_options(&with_tty).expect("build").tty,
+            build_box_options(&with_tty, &HostPathPolicy::default())
+                .expect("build")
+                .tty,
             "a REST client asking for a terminal must get one"
         );
 
         let without: super::types::CreateBoxRequest =
             serde_json::from_str(r#"{"image": "alpine:latest"}"#).expect("body must deserialize");
         assert!(
-            !build_box_options(&without).expect("build").tty,
+            !build_box_options(&without, &HostPathPolicy::default())
+                .expect("build")
+                .tty,
             "no tty asked for, none granted"
         );
     }
@@ -2150,7 +2165,7 @@ mod tests {
         )
         .expect("body with secrets must deserialize");
 
-        let opts = build_box_options(&req).expect("build with secrets");
+        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build with secrets");
         assert_eq!(opts.secrets.len(), 1, "one secret in, one secret out");
         let secret = &opts.secrets[0];
         assert_eq!(secret.name, "openai");
@@ -2168,7 +2183,7 @@ mod tests {
         )
         .expect("body with explicit placeholder must deserialize");
 
-        let opts = build_box_options(&req).expect("build");
+        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
         assert_eq!(
             opts.secrets[0].placeholder, "<MY_TOKEN>",
             "caller placeholder wins"
@@ -2182,7 +2197,7 @@ mod tests {
         )
         .expect("body with empty placeholder must deserialize");
 
-        let opts = build_box_options(&req).expect("build");
+        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
         assert_eq!(
             opts.secrets[0].placeholder, "<BOXLITE_SECRET:openai>",
             "an empty placeholder is as absent as an omitted one"
@@ -2200,7 +2215,8 @@ mod tests {
             ))
             .expect("body with secrets must deserialize");
 
-            let err = build_box_options(&req).expect_err("empty secret fields must be rejected");
+            let err = build_box_options(&req, &HostPathPolicy::default())
+                .expect_err("empty secret fields must be rejected");
             assert!(
                 matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("non-empty")),
                 "unexpected error: {err}"
@@ -2209,17 +2225,32 @@ mod tests {
     }
 
     #[test]
-    fn build_box_options_rejects_nonempty_volumes() {
-        let req: super::types::CreateBoxRequest = serde_json::from_str(
-            r#"{"image":"alpine:latest","volumes":[{"managed_volume":"v1","guest_path":"/data"}]}"#,
-        )
-        .expect("body with volumes must deserialize (accepted, then rejected)");
+    /// The #942 request shape: an agent workspace on this machine, bound at
+    /// `/workspace`, once the operator has allowed its parent directory.
+    fn build_box_options_binds_a_host_path_volume_under_a_root() {
+        let root = tempfile::tempdir().unwrap();
+        let workspace = root.path().join("agent-1");
+        std::fs::create_dir(&workspace).unwrap();
+        let body = serde_json::json!({
+            "image": "alpine:latest",
+            "volumes": [{
+                "host_path": workspace,
+                "guest_path": "/workspace",
+                "read_only": true,
+            }],
+        });
+        let req: super::types::CreateBoxRequest = serde_json::from_value(body).unwrap();
+        let host_paths = HostPathPolicy::from_roots(&[root.path().to_path_buf()]).unwrap();
 
-        let err = build_box_options(&req).expect_err("non-empty volumes must be rejected");
-        assert!(
-            matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("managed volumes")),
-            "unexpected error: {err}"
+        let opts = build_box_options(&req, &host_paths).expect("a host path under a root binds");
+
+        assert_eq!(opts.volumes.len(), 1);
+        assert_eq!(
+            std::path::Path::new(&opts.volumes[0].host_path),
+            workspace.canonicalize().unwrap()
         );
+        assert_eq!(opts.volumes[0].guest_path, "/workspace");
+        assert!(opts.volumes[0].read_only);
     }
 
     #[test]
@@ -2229,7 +2260,8 @@ mod tests {
         )
         .expect("capability request must deserialize");
 
-        let opts = build_box_options(&req).expect("build capability options");
+        let opts =
+            build_box_options(&req, &HostPathPolicy::default()).expect("build capability options");
         let capabilities = opts.advanced.capabilities().expect("capabilities set");
         assert_eq!(capabilities.add, vec!["SYS_ADMIN"]);
         assert_eq!(capabilities.drop, vec!["CAP_NET_RAW"]);
@@ -2245,7 +2277,8 @@ mod tests {
             serde_json::from_str(r#"{"image":"alpine:latest"}"#)
                 .expect("ordinary request must deserialize");
 
-        let opts = build_box_options(&req).expect("build ordinary options");
+        let opts =
+            build_box_options(&req, &HostPathPolicy::default()).expect("build ordinary options");
         assert!(
             opts.advanced.capabilities().is_none(),
             "omitting capabilities on the wire must not become an explicit empty policy"
@@ -2258,7 +2291,8 @@ mod tests {
             r#"{"auto_stop": 900, "auto_delete": 3600, "auto_resume": false}"#,
         )
         .expect("lifecycle body must deserialize");
-        let opts = build_box_options(&req).expect("build lifecycle options");
+        let opts =
+            build_box_options(&req, &HostPathPolicy::default()).expect("build lifecycle options");
         assert_eq!(
             opts.auto_stop, None,
             "the local runtime refuses a non-zero auto_stop outright, so \
@@ -2279,7 +2313,9 @@ mod tests {
         let persistent: super::types::CreateBoxRequest =
             serde_json::from_str(r#"{"auto_delete": 0}"#).expect("body must deserialize");
         assert!(
-            build_box_options(&persistent).expect("build").detach,
+            build_box_options(&persistent, &HostPathPolicy::default())
+                .expect("build")
+                .detach,
             "persistent boxes keep the serve API's historical detached default"
         );
     }
@@ -2294,6 +2330,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         }
@@ -2859,7 +2896,7 @@ mod tests {
             };
             let req: super::types::CreateBoxRequest =
                 serde_json::from_str(&body).expect("body must deserialize");
-            let opts = build_box_options(&req).expect("build");
+            let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
             assert!(
                 matches!(opts.inbound_network, NetworkSpec::Disabled),
                 "network {network:?} must default inbound to disabled"
@@ -2884,7 +2921,7 @@ mod tests {
             }"#,
         )
         .expect("nested network body must deserialize");
-        let opts = build_box_options(&req).expect("build");
+        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
         match opts.network {
             NetworkSpec::Enabled { allow_net } => {
                 assert_eq!(allow_net, vec!["api.openai.com"]);
@@ -2909,7 +2946,8 @@ mod tests {
             }"#,
         )
         .expect("mixed network body still deserializes for compatibility validation");
-        let err = build_box_options(&req).expect_err("mixed network body must fail");
+        let err = build_box_options(&req, &HostPathPolicy::default())
+            .expect_err("mixed network body must fail");
         assert!(
             matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("either nested")),
             "unexpected error: {err}"
@@ -2930,7 +2968,8 @@ mod tests {
             }"#,
         )
         .expect("mixed network body still deserializes for compatibility validation");
-        let err = build_box_options(&req).expect_err("mixed network body must fail");
+        let err = build_box_options(&req, &HostPathPolicy::default())
+            .expect_err("mixed network body must fail");
         assert!(
             matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("either nested")),
             "unexpected error: {err}"
@@ -2945,7 +2984,7 @@ mod tests {
         let json = r#"{"image": "alpine:latest"}"#;
         let req: super::types::CreateBoxRequest =
             serde_json::from_str(json).expect("body must deserialize");
-        let opts = build_box_options(&req).expect("build_box_options");
+        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build_box_options");
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         assert!(
             opts.advanced.security.jailer_enabled,
@@ -3074,6 +3113,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3475,6 +3515,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3542,6 +3583,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3607,6 +3649,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3664,6 +3707,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         };
@@ -3708,6 +3752,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3761,6 +3806,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3823,6 +3869,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3933,6 +3980,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -3978,6 +4026,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         };
@@ -4020,6 +4069,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         };
@@ -4062,6 +4112,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         };
@@ -4112,6 +4163,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -4170,6 +4222,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: Some("expected-key".to_string()),
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -4217,6 +4270,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         });
@@ -4501,6 +4555,7 @@ mod tests {
             boxes: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
             api_key: None,
+            host_paths: Default::default(),
             lifecycle: RwLock::new(HashMap::new()),
             last_activity: RwLock::new(HashMap::new()),
         };
