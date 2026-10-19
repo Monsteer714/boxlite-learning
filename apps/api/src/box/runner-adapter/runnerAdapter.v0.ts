@@ -10,6 +10,8 @@ import axiosRetry from 'axios-retry'
 
 import { Injectable, Logger } from '@nestjs/common'
 import { RunnerAdapter, RunnerInfo, RunnerBoxInfo, StartBoxResponse } from './runnerAdapter'
+import { SecretCipher } from '../../encryption/secret-cipher'
+import { openBoxSecrets } from '../utils/box-secrets.util'
 import { Runner } from '../entities/runner.entity'
 import {
   Configuration,
@@ -122,6 +124,8 @@ export class RunnerAdapterV0 implements RunnerAdapter {
   private readonly logger = new Logger(RunnerAdapterV0.name)
   private boxApiClient: BoxApi
   private runnerApiClient: DefaultApi
+
+  constructor(private readonly secretCipher: SecretCipher) {}
 
   private convertBoxState(state: EnumsBoxState): BoxState {
     switch (state) {
@@ -267,12 +271,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       workingDir: box.workingDir,
       entrypoint: box.entrypoint,
       cmd: box.cmd,
-      secrets: box.secrets?.map((secret) => ({
-        name: secret.name,
-        value: secret.value,
-        hosts: secret.hosts,
-        placeholder: secret.placeholder,
-      })),
+      secrets: openBoxSecrets(this.secretCipher, box.id, box.secrets),
       outboundEnabled: box.outboundEnabled,
       outboundAllowNet: box.outboundAllowNet ?? undefined,
       metadata,
@@ -337,12 +336,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       memoryQuota: box.mem,
       storageQuota: box.disk,
       env: box.env,
-      secrets: box.secrets?.map((secret) => ({
-        name: secret.name,
-        value: secret.value,
-        hosts: secret.hosts,
-        placeholder: secret.placeholder,
-      })),
+      secrets: openBoxSecrets(this.secretCipher, box.id, box.secrets),
       volumes: box.volumes?.map((volume) => ({
         volumeId: volume.volumeId,
         mountPath: volume.mountPath,

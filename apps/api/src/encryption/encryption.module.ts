@@ -5,9 +5,19 @@
 
 import { Module } from '@nestjs/common'
 import { EncryptionService } from './encryption.service'
+import { SecretCipher } from './secret-cipher'
+import { TypedConfigService } from '../config/typed-config.service'
 
 @Module({
-  providers: [EncryptionService],
-  exports: [EncryptionService],
+  providers: [
+    EncryptionService,
+    {
+      provide: SecretCipher,
+      inject: [TypedConfigService],
+      useFactory: (config: TypedConfigService) =>
+        SecretCipher.fromSettings(config.get('encryption.key'), config.get('encryption.salt')),
+    },
+  ],
+  exports: [EncryptionService, SecretCipher],
 })
 export class EncryptionModule {}

@@ -2444,7 +2444,10 @@ components:
           description: Human-readable secret name
         value:
           type: string
-          description: Real secret value. Never enters the guest VM.
+          description: |
+            Real secret value. Never enters the guest VM.
+            boxlite cloud rejects a value that starts with `enc:v1:`, the
+            prefix of a sealed value, with 400.
         hosts:
           type: array
           items:

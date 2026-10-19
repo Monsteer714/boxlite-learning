@@ -388,6 +388,7 @@ or `archived`.
 | `env` | `jsonb` | default `{}` |
 | `labels` | `jsonb` | nullable |
 | `volumes` | `jsonb` | array of `{ volumeId, mountPath }` |
+| `secrets` | `jsonb` | default `[]`; array of `{ name, value, hosts, placeholder }`; `value` is plaintext (see below) |
 | `inboundEnabled` | `boolean` | default `false`; `true` lets the proxy serve exposed services without sign-in |
 | `outboundEnabled` | `boolean` | default `true`; `false` blocks all egress |
 | `outboundAllowNet` | `text[]` | nullable egress allowlist (hosts, wildcards, IPv4, CIDRs); null = full egress |
@@ -405,6 +406,17 @@ read returns. It also still serves the deprecated `public`,
 `networkBlockAll` and comma-joined `networkAllowList`
 (`box/utils/network-policy.util.ts`) until the dashboard and Go clients move
 off them (POL-827).
+
+`secrets[].value` is stored in plaintext. The runner adapters open each value
+before it goes into a create or recover request: a value with the `enc:v1:`
+prefix is AES-256-GCM ciphertext (`encryption/secret-cipher.ts`), keyed by HKDF
+from `ENCRYPTION_KEY` and `ENCRYPTION_SALT`, with `box:<id>:secret:<name>` as
+associated data; any other value passes through. The REST create request
+rejects a value that starts with `enc:v1:`, which would fail to open as
+plaintext. Reading both forms first lets a later release seal values on write
+without an older API instance sending a sealed string to a runner. The opened
+value travels in the runner request, and on v2 runners it rests in
+`job.payload`.
 
 **Unique:** `(organizationId, name)`.
 

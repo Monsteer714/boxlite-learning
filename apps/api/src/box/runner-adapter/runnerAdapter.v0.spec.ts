@@ -3,13 +3,17 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
+import { SecretCipher } from '../../encryption/secret-cipher'
+import { sealBoxSecrets } from '../utils/box-secrets.util'
 import { RunnerAdapterV0 } from './runnerAdapter.v0'
+
+const cipher = SecretCipher.fromSettings('test-encryption-key', 'test-salt')
 
 describe('RunnerAdapterV0 createBox', () => {
   // The runner body carries the row's outbound policy as is; the Daytona-era
   // networkBlockAll / networkAllowList pair is gone from the wire.
   it('sends the outbound policy as the enabled flag and entries', async () => {
-    const adapter = new RunnerAdapterV0()
+    const adapter = new RunnerAdapterV0(cipher)
     const create = jest.fn().mockResolvedValue({ data: { daemonVersion: '1.0' } })
     ;(adapter as any).boxApiClient = { create }
 
@@ -28,8 +32,9 @@ describe('RunnerAdapterV0 createBox', () => {
     expect(create.mock.calls[0][0]).not.toHaveProperty('networkAllowList')
   })
 
-  it('passes secrets through to the runner create body', async () => {
-    const adapter = new RunnerAdapterV0()
+  // The row holds sealed values; the runner needs the real one.
+  it('opens stored secrets into the runner create body', async () => {
+    const adapter = new RunnerAdapterV0(cipher)
     const create = jest.fn().mockResolvedValue({ data: { daemonVersion: '1.0' } })
     ;(adapter as any).boxApiClient = { create }
 
@@ -42,9 +47,9 @@ describe('RunnerAdapterV0 createBox', () => {
       mem: 1,
       disk: 3,
       env: {},
-      secrets: [
+      secrets: sealBoxSecrets(cipher, 'box-1', [
         { name: 'openai', value: 'sk-test', hosts: ['api.openai.com'], placeholder: '<BOXLITE_SECRET:openai>' },
-      ],
+      ]),
       outboundEnabled: true,
       outboundAllowNet: undefined,
       authToken: undefined,
@@ -65,7 +70,7 @@ describe('RunnerAdapterV0 createBox', () => {
 
   /** The caller may pin a curated tag to the build this runner already has. */
   it('sends the image it is handed rather than the one on the box', async () => {
-    const adapter = new RunnerAdapterV0()
+    const adapter = new RunnerAdapterV0(cipher)
     const create = jest.fn().mockResolvedValue({ data: { daemonVersion: '1.0' } })
     ;(adapter as any).boxApiClient = { create }
     const pinned = `ghcr.io/boxlite-ai/boxlite-agent-base@sha256:${'a'.repeat(64)}`
@@ -75,8 +80,8 @@ describe('RunnerAdapterV0 createBox', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ image: pinned }))
   })
 
-  it('passes secrets through to the runner recover body', async () => {
-    const adapter = new RunnerAdapterV0()
+  it('opens stored secrets into the runner recover body', async () => {
+    const adapter = new RunnerAdapterV0(cipher)
     const recover = jest.fn().mockResolvedValue(undefined)
     ;(adapter as any).boxApiClient = { recover }
 
@@ -89,7 +94,7 @@ describe('RunnerAdapterV0 createBox', () => {
       disk: 3,
       env: {},
       volumes: [],
-      secrets: [{ name: 'openai', value: 'sk-test' }],
+      secrets: sealBoxSecrets(cipher, 'box-1', [{ name: 'openai', value: 'sk-test' }]),
       outboundEnabled: true,
       outboundAllowNet: undefined,
       errorReason: 'crashed',

@@ -5,12 +5,16 @@
 
 import { JobType } from '../enums/job-type.enum'
 import { ResourceType } from '../enums/resource-type.enum'
+import { SecretCipher } from '../../encryption/secret-cipher'
+import { sealBoxSecrets } from '../utils/box-secrets.util'
 import { RunnerAdapterV2 } from './runnerAdapter.v2'
 
+const cipher = SecretCipher.fromSettings('test-encryption-key', 'test-salt')
+
 describe('RunnerAdapterV2 createBox', () => {
-  it('passes secrets through to the CREATE_BOX job payload', async () => {
+  it('opens stored secrets into the CREATE_BOX job payload', async () => {
     const jobService = { createJob: jest.fn().mockResolvedValue(undefined) } as any
-    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService)
+    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService, cipher)
     await adapter.init({ id: 'runner-1' } as any)
 
     const box = {
@@ -22,9 +26,9 @@ describe('RunnerAdapterV2 createBox', () => {
       mem: 1,
       disk: 3,
       volumes: [],
-      secrets: [
+      secrets: sealBoxSecrets(cipher, 'box-1', [
         { name: 'openai', value: 'sk-test', hosts: ['api.openai.com'], placeholder: '<BOXLITE_SECRET:openai>' },
-      ],
+      ]),
       outboundEnabled: true,
       outboundAllowNet: undefined,
       authToken: undefined,
@@ -51,7 +55,7 @@ describe('RunnerAdapterV2 createBox', () => {
   /** The caller may pin a curated tag to the build this runner already has. */
   it('sends the image it is handed rather than the one on the box', async () => {
     const jobService = { createJob: jest.fn().mockResolvedValue(undefined) } as any
-    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService)
+    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService, cipher)
     await adapter.init({ id: 'runner-1' } as any)
     const pinned = `ghcr.io/boxlite-ai/boxlite-agent-base@sha256:${'a'.repeat(64)}`
 
@@ -69,7 +73,7 @@ describe('RunnerAdapterV2 createBox', () => {
 
   it('puts the outbound policy in the CREATE_BOX job payload as the enabled flag and entries', async () => {
     const jobService = { createJob: jest.fn().mockResolvedValue(undefined) } as any
-    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService)
+    const adapter = new RunnerAdapterV2({} as any, {} as any, jobService, cipher)
     await adapter.init({ id: 'runner-1' } as any)
 
     await adapter.createBox(

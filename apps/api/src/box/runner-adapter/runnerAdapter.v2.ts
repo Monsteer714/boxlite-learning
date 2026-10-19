@@ -5,6 +5,8 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common'
+import { SecretCipher } from '../../encryption/secret-cipher'
+import { openBoxSecrets } from '../utils/box-secrets.util'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, IsNull } from 'typeorm'
 import { RunnerAdapter, RunnerInfo, RunnerBoxInfo, StartBoxResponse } from './runnerAdapter'
@@ -33,6 +35,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
     @InjectRepository(Job)
     private readonly jobRepository: Repository<Job>,
     private readonly jobService: JobService,
+    private readonly secretCipher: SecretCipher,
   ) {}
 
   async init(runner: Runner): Promise<void> {
@@ -140,12 +143,7 @@ export class RunnerAdapterV2 implements RunnerAdapter {
         mountPath: volume.mountPath,
         subpath: volume.subpath,
       })),
-      secrets: box.secrets?.map((secret) => ({
-        name: secret.name,
-        value: secret.value,
-        hosts: secret.hosts,
-        placeholder: secret.placeholder,
-      })),
+      secrets: openBoxSecrets(this.secretCipher, box.id, box.secrets),
       outboundEnabled: box.outboundEnabled,
       outboundAllowNet: box.outboundAllowNet ?? undefined,
       metadata,

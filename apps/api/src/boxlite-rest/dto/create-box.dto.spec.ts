@@ -461,4 +461,13 @@ describe('CreateBoxDto secrets', () => {
     expect(errors).not.toHaveLength(0)
     expect(errors[0]?.children?.[0]?.children?.[0]?.constraints).toHaveProperty('isNotEmpty')
   })
+
+  it('rejects a secret value that starts with the sealed prefix', async () => {
+    const errors = await validate(
+      plainToInstance(CreateBoxDto, { secrets: [{ name: 'openai', value: 'enc:v1:sk-test' }] }),
+    )
+
+    expect(errors).not.toHaveLength(0)
+    expect(errors[0]?.children?.[0]?.children?.[0]?.constraints).toHaveProperty('isNotSealed')
+  })
 })

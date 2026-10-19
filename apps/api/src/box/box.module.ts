@@ -5,6 +5,7 @@
  */
 
 import { Module } from '@nestjs/common'
+import { EncryptionModule } from '../encryption/encryption.module'
 import { DataSource } from 'typeorm'
 import { BoxController } from './controllers/box.controller'
 import { BoxService } from './services/box.service'
@@ -59,6 +60,7 @@ import { TunnelService } from './services/tunnel.service'
 
 @Module({
   imports: [
+    EncryptionModule,
     UserModule,
     OrganizationModule,
     RegionModule,

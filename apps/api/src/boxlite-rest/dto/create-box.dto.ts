@@ -25,6 +25,7 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator'
 import { isValidNetworkAllowEntry, MAX_NETWORK_ALLOW_LIST_ENTRIES } from '../../box/utils/network-validation.util'
+import { SecretCipher } from '../../encryption/secret-cipher'
 
 const logger = new Logger('CreateBoxDto')
 
@@ -180,6 +181,19 @@ export class VolumeSpecDto {
   read_only?: false
 }
 
+// The runner adapters open any stored value with the sealed prefix, so a
+// plaintext value that starts with it would fail every create and recover.
+@ValidatorConstraint({ name: 'isNotSealed', async: false })
+class IsNotSealedConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    return typeof value !== 'string' || !SecretCipher.isSealed(value)
+  }
+
+  defaultMessage(): string {
+    return 'secret value must not start with enc:v1:, which marks a sealed value'
+  }
+}
+
 export class SecretSpecDto {
   @IsString()
   @IsNotEmpty()
@@ -187,6 +201,7 @@ export class SecretSpecDto {
 
   @IsString()
   @IsNotEmpty()
+  @Validate(IsNotSealedConstraint)
   value: string
 
   @IsOptional()
