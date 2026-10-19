@@ -28,6 +28,9 @@ pub struct BoxliteCommand {
     pub timeout_secs: f64,
     /// Enable TTY mode for interactive programs.
     pub tty: c_int,
+    /// Keep the process running after its handle is freed. The box must be
+    /// detached, or the exec call fails with an invalid-state error.
+    pub detach: c_int,
 }
 
 pub(super) unsafe fn parse_boxlite_command(
@@ -61,6 +64,10 @@ pub(super) unsafe fn parse_boxlite_command(
             box_cmd = box_cmd.tty(true);
         }
 
+        if cmd.detach != 0 {
+            box_cmd = box_cmd.detach(true);
+        }
+
         Ok(box_cmd)
     }
 }
@@ -87,6 +94,7 @@ mod tests {
                 user: ptr::null(),
                 timeout_secs,
                 tty: 0,
+                detach: 0,
             };
 
             let err =

@@ -53,6 +53,8 @@ impl JsBox {
     /// * `user` - Run as specified user (optional)
     /// * `timeoutSecs` - Execution timeout in seconds (optional)
     /// * `workingDir` - Working directory inside the container (optional)
+    /// * `detach` - Keep running after this client goes away; the box must be
+    ///   detached (optional, default: false)
     #[napi]
     #[allow(clippy::too_many_arguments)]
     pub async fn exec(
@@ -64,6 +66,7 @@ impl JsBox {
         user: Option<String>,
         timeout_secs: Option<f64>,
         working_dir: Option<String>,
+        detach: Option<bool>,
     ) -> Result<JsExecution> {
         let handle = Arc::clone(&self.handle);
 
@@ -95,6 +98,10 @@ impl JsBox {
 
         if let Some(dir) = working_dir {
             cmd = cmd.working_dir(dir);
+        }
+
+        if detach.unwrap_or(false) {
+            cmd = cmd.detach(true);
         }
 
         let execution = handle.exec(cmd).await.map_err(map_err)?;

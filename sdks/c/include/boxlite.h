@@ -238,6 +238,9 @@ typedef struct BoxliteCommand {
   double timeout_secs;
   // Enable TTY mode for interactive programs.
   int tty;
+  // Keep the process running after its handle is freed. The box must be
+  // detached, or the exec call fails with an invalid-state error.
+  int detach;
 } BoxliteCommand;
 
 typedef struct ExecutionHandle CExecutionHandle;

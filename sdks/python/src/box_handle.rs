@@ -53,7 +53,7 @@ impl PyBox {
         }
     }
 
-    #[pyo3(signature = (command, args=None, env=None, tty=false, user=None, timeout_secs=None, cwd=None))]
+    #[pyo3(signature = (command, args=None, env=None, tty=false, user=None, timeout_secs=None, cwd=None, detach=false))]
     #[allow(clippy::too_many_arguments)]
     fn exec<'a>(
         &self,
@@ -65,6 +65,7 @@ impl PyBox {
         user: Option<String>,
         timeout_secs: Option<f64>,
         cwd: Option<String>,
+        detach: bool,
     ) -> PyResult<Bound<'a, PyAny>> {
         let handle = Arc::clone(&self.handle);
 
@@ -89,6 +90,9 @@ impl PyBox {
             }
             if let Some(cwd) = cwd {
                 cmd = cmd.working_dir(cwd);
+            }
+            if detach {
+                cmd = cmd.detach(true);
             }
 
             let execution = handle.exec(cmd).await.map_err(map_err)?;

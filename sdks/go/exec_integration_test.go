@@ -159,3 +159,43 @@ func TestIntegrationExecStdoutRace(t *testing.T) {
 		)
 	}
 }
+
+// TestIntegrationExecDetachOutlivesClose proves ExecutionOptions.Detach
+// reaches the core and that Close (boxlite_execution_free) leaves a
+// detached process running, while a box that is not detached still
+// refuses Detach.
+func TestIntegrationExecDetachOutlivesClose(t *testing.T) {
+	rt := newTestRuntime(t)
+	ctx := context.Background()
+
+	t.Run("Close leaves a detached exec running", func(t *testing.T) {
+		box := createStartedBoxOrSkip(t, rt, "alpine:latest", WithDetach(true), WithAutoRemove(false))
+		execution, err := box.StartExecution(ctx, "sleep", []string{"4242"}, &ExecutionOptions{Detach: true})
+		if err != nil {
+			t.Fatalf("StartExecution with Detach: %v", err)
+		}
+		if err := execution.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+
+		probe, err := box.Exec(ctx, "pgrep", "-f", "sleep 4242")
+		if err != nil {
+			t.Fatalf("pgrep: %v", err)
+		}
+		if probe.ExitCode != 0 {
+			t.Fatalf("Close killed the detached exec: pgrep exit=%d", probe.ExitCode)
+		}
+	})
+
+	t.Run("Detach is refused on a box that is not detached", func(t *testing.T) {
+		box := createStartedBoxOrSkip(t, rt, "alpine:latest", WithAutoRemove(false))
+		execution, err := box.StartExecution(ctx, "sleep", []string{"1"}, &ExecutionOptions{Detach: true})
+		if err == nil {
+			_ = execution.Close()
+			t.Fatal("StartExecution with Detach on a box that is not detached succeeded")
+		}
+		if !IsInvalidState(err) {
+			t.Fatalf("want an invalid-state error, got %v", err)
+		}
+	})
+}

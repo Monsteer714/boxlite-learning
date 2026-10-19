@@ -93,6 +93,7 @@ class SyncBox:
         args: list[str] | None = None,
         env: list[tuple[str, str]] | None = None,
         tty: bool = False,
+        detach: bool = False,
     ) -> "SyncExecution":
         """
         Execute a command in the box.
@@ -102,6 +103,8 @@ class SyncBox:
             args: Command arguments as list
             env: Environment variables as list of (key, value) tuples
             tty: Enable TTY mode for interactive sessions
+            detach: Keep running after this client goes away; the box must
+                be detached
 
         Returns:
             SyncExecution handle for streaming output and waiting for completion.
@@ -116,7 +119,7 @@ class SyncBox:
         from ._execution import SyncExecution
 
         # Run the async exec and get the Execution handle
-        execution = self._sync(self._box.exec(cmd, args, env, tty))
+        execution = self._sync(self._box.exec(cmd, args, env, tty, detach=detach))
         return SyncExecution(self._runtime, execution)
 
     def stop(self) -> None:

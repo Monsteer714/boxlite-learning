@@ -781,6 +781,7 @@ typedef struct BoxliteCommand {
     const char* user;         // User spec (e.g., "nobody", "1000:1000"), or NULL
     double timeout_secs;      // Timeout in seconds (0.0 = no timeout)
     int tty;                  // 0 = no TTY, non-zero = TTY
+    int detach;               // non-zero = keep running after boxlite_execution_free
 } BoxliteCommand;
 
 BoxliteErrorCode boxlite_execute(

@@ -367,8 +367,10 @@ Handle to a running or stopped box.
 
 **Methods:**
 
-- `exec(command, args=None, env=None, tty=False, user=None, timeout_secs=None, cwd=None) -> Execution`
-  Execute a command in the box (async); `args` is a list
+- `exec(command, args=None, env=None, tty=False, user=None, timeout_secs=None, cwd=None, detach=False) -> Execution`
+  Execute a command in the box (async); `args` is a list. `detach=True` keeps
+  the command running after this client exits; the box must be detached, or
+  it raises `InvalidStateError`
 
 - `stop() -> None`
   Stop the box gracefully (async)

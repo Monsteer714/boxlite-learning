@@ -586,6 +586,7 @@ export interface JsBox {
     user?: string | null,
     timeoutSecs?: number | null,
     workingDir?: string | null,
+    detach?: boolean | null,
   ): Promise<JsExecution>;
   readonly snapshot: JsSnapshotHandle;
   readonly network: JsNetworkHandle;

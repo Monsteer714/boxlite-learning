@@ -87,6 +87,9 @@ pub struct ExecutionHandle {
     /// already exited, and conversely the natural exit pump may push Exit
     /// before `_free` runs.
     process_completed: Arc<AtomicBool>,
+    /// Started with `BoxliteCommand.detach`: `_free` releases the handle
+    /// but leaves the process running.
+    detached: bool,
     /// Single-flip claim on the per-execution Exit event. Set via
     /// `compare_exchange(false, true, AcqRel, Acquire)`; only the
     /// claimer pushes Exit. Both `execution_free` and `exit_pump`
@@ -233,6 +236,7 @@ unsafe fn box_exec(
         *out_execution = ptr::null_mut();
 
         let handle_ref = &*handle;
+        let detached = (*cmd).detach != 0;
         let command = match parse_boxlite_command(&*cmd) {
             Ok(command) => command,
             Err(e) => {
@@ -265,6 +269,7 @@ unsafe fn box_exec(
                     queue: handle_ref.queue.clone(),
                     tokio_rt: handle_ref.tokio_rt.clone(),
                     process_completed: Arc::new(AtomicBool::new(false)),
+                    detached,
                     exit_dispatched: Arc::new(AtomicBool::new(false)),
                 };
                 *out_execution = Box::into_raw(Box::new(exec_handle));
@@ -643,9 +648,11 @@ unsafe fn execution_free(execution: *mut ExecutionHandle) {
         }
 
         // If the process never observed completion, kill + wait inside a
-        // best-effort block_on so we don't leak the guest-side process.
+        // best-effort block_on so we don't leak the guest-side process. A
+        // detached process is meant to outlive its handle, so it is left
+        // running.
         let process_completed = exec_box.process_completed.load(Ordering::Acquire);
-        if !process_completed {
+        if !process_completed && !exec_box.detached {
             let exec_arc = exec_box.execution.clone();
             let _ = exec_box.tokio_rt.block_on(async move {
                 let _ = kill_on_clone(&exec_arc).await;
@@ -872,6 +879,7 @@ mod tests {
             queue: Arc::new(EventQueue::new()),
             tokio_rt: runtime,
             process_completed: Arc::new(AtomicBool::new(false)),
+            detached: false,
             exit_dispatched: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -889,6 +897,7 @@ mod tests {
             user: ptr::null(),
             timeout_secs: 0.0,
             tty: 1,
+            detach: 0,
         };
         let mut execution: *mut ExecutionHandle = ptr::null_mut();
         let mut error = FFIError::default();

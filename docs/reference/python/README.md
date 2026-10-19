@@ -338,7 +338,7 @@ Handle to a running or stopped box.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `exec()` | `(cmd, args, env, tty) -> Execution` | Execute command (async) |
+| `exec()` | `(cmd, args, env, tty, user, timeout_secs, cwd, detach=False) -> Execution` | Execute command (async). `detach=True` keeps it running after this client exits; the box must be detached, or it raises |
 | `attach()` | `(execution_id=None, stdin=True) -> Execution` | Follow a running session (async) |
 | `stop()` | `() -> None` | Stop the box gracefully (async) |
 | `info()` | `async () -> BoxInfo` | Get box metadata |

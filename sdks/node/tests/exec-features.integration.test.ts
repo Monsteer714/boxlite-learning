@@ -1,5 +1,5 @@
 /**
- * Integration tests for execution features: resizeTty, signal.
+ * Integration tests for execution features: resizeTty, signal, detach.
  *
  * Requires VM support (KVM on Linux, Hypervisor.framework on macOS).
  */
@@ -59,5 +59,21 @@ describe("execution features integration", { timeout: 120_000 }, () => {
     await run.signal(10);
     const result = await run.wait();
     expect(result.exitCode).toBe(-10);
+  });
+
+  test("detach is refused on a box that is not detached", async () => {
+    const nativeBox = await (box as any)._ensureBox();
+    await expect(
+      nativeBox.exec(
+        "sleep",
+        ["1"],
+        undefined,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      ),
+    ).rejects.toThrow(/not detached/);
   });
 });

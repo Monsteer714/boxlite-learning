@@ -69,6 +69,9 @@ type ExecutionOptions struct {
 	// means no timeout (the C side treats `timeout_secs <= 0` as
 	// unbounded — see `sdks/c/src/exec/command.rs`).
 	Timeout time.Duration
+	// Detach keeps the process running after Close. The box must be
+	// detached (WithDetach(true)), or StartExecution fails.
+	Detach bool
 }
 
 // executionStreamState holds the user-provided sinks for streaming output
@@ -240,6 +243,7 @@ func (b *Box) StartExecution(_ context.Context, name string, args []string, opts
 		user:         nil,
 		timeout_secs: C.double(cfg.Timeout.Seconds()),
 		tty:          boolToCInt(cfg.TTY),
+		detach:       boolToCInt(cfg.Detach),
 	}
 
 	var handle *C.CExecutionHandle

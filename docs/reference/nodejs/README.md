@@ -307,7 +307,7 @@ Handle to a running or stopped box.
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `info()` | `() => Promise<JsBoxInfo>` | Get box metadata |
-| `exec()` | `(cmd, args?, env?, tty?) => Promise<JsExecution>` | Execute command |
+| `exec()` | `(cmd, args?, env?, tty?, user?, timeoutSecs?, workingDir?, detach?) => Promise<JsExecution>` | Execute command. `detach: true` keeps it running after this client exits; the box must be detached, or it rejects |
 | `stop()` | `() => Promise<void>` | Stop the box |
 | `metrics()` | `() => Promise<JsBoxMetrics>` | Get resource metrics |
 
