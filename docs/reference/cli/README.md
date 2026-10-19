@@ -353,9 +353,9 @@ separator is required (`src/cli/src/commands/exec.rs:22`, `last = true`).
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--detach` | `-d` | Start the command and return immediately without streaming |
+| `--detach` | `-d` | Start the command, print its execution id, and return without streaming. The command keeps running after the CLI exits, with no `boxlite serve` reaping or lifetime cap, until it ends or its box stops. The box must be detached (`boxlite create`, `boxlite run -d`); otherwise the exec fails with `InvalidState` |
 
-**Exit behavior:** Same as `boxlite run` (foreground streams + propagates exit code; detach exits `0`). After a foreground exec finishes the CLI calls `runtime.shutdown(None)` to release the box handle gracefully.
+**Exit behavior:** Same as `boxlite run` (foreground streams + propagates exit code; detach prints the execution id and exits `0`). After a foreground exec finishes the CLI calls `runtime.shutdown(None)` to release the box handle gracefully.
 
 **Examples:**
 
@@ -363,6 +363,7 @@ separator is required (`src/cli/src/commands/exec.rs:22`, `last = true`).
 boxlite exec mybox -- echo "hello"
 boxlite exec -it mybox -- /bin/sh
 boxlite exec -e DEBUG=1 -w /app mybox -- pytest tests/
+boxlite exec -d mybox -- ./long-task.sh   # prints the execution id
 ```
 
 ---

@@ -356,7 +356,29 @@ fn test_exec_detach() {
         .args(["exec", "-d", &box_id, "--", "sleep", "10"])
         .assert()
         .success()
-        .stdout(""); // Detach mode produces no output
+        // Detach mode prints only the execution id, to reattach by.
+        .stdout(predicate::str::is_match(r"^\S+\n$").unwrap());
+
+    cleanup(&ctx, &box_id);
+}
+
+/// A detached exec keeps running after the CLI that started it exits.
+#[test]
+fn test_exec_detach_outlives_the_cli() {
+    let mut ctx = common::boxlite();
+
+    ctx.cmd.args(["run", "-d", "alpine:latest", "sleep", "300"]);
+    let output = ctx.cmd.assert().success().get_output().clone();
+    let box_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    ctx.new_cmd()
+        .args(["exec", "-d", &box_id, "--", "sleep", "4242"])
+        .assert()
+        .success();
+    ctx.new_cmd()
+        .args(["exec", &box_id, "--", "pgrep", "-f", "sleep 4242"])
+        .assert()
+        .success();
 
     cleanup(&ctx, &box_id);
 }
@@ -373,7 +395,7 @@ fn test_exec_detach_with_tty_allowed() {
         .args(["exec", "-d", "-t", &box_id, "--", "echo", "test"])
         .assert()
         .success()
-        .stdout("");
+        .stdout(predicate::str::is_match(r"^\S+\n$").unwrap());
 
     cleanup(&ctx, &box_id);
 }

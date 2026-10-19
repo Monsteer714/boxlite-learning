@@ -18,6 +18,11 @@ pub struct ServeChild {
 
 impl ServeChild {
     pub fn start() -> Self {
+        Self::start_with_env(&[])
+    }
+
+    /// Start with extra environment, e.g. shortened reaper caps.
+    pub fn start_with_env(env: &[(&str, &str)]) -> Self {
         let home = boxlite_test_utils::home::PerTestBoxHome::new();
 
         // Ask the OS for a free port, then release it — a small race with
@@ -34,6 +39,7 @@ impl ServeChild {
             cmd.arg("--registry").arg(reg);
         }
         cmd.args(["serve", "--host", "127.0.0.1", "--port", &port.to_string()])
+            .envs(env.iter().copied())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
 
@@ -62,6 +68,18 @@ impl ServeChild {
             .args(args)
             .output()
             .expect("boxlite --url")
+    }
+
+    /// Start a `boxlite --url` client command in the background.
+    pub fn spawn_client(&self, args: &[&str]) -> Child {
+        Command::new(env!("CARGO_BIN_EXE_boxlite"))
+            .args(["--url", &self.url()])
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("spawn boxlite --url")
     }
 
     /// Wait until the server reports no boxes.

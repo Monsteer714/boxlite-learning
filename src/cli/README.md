@@ -459,7 +459,7 @@ refused, so start that box deliberately with `boxlite start` first.
 | `--env KEY[=VALUE]` | `-e` | Environment variables; a bare key inherits its host value |
 | `--workdir PATH` | `-w` | Working directory |
 | `--user NAME[:GROUP]` | `-u` | Run as a name/uid and optional group/gid |
-| `--detach` | `-d` | Run in background (don’t wait) |
+| `--detach` | `-d` | Run in background and print the execution id; keeps running after the CLI exits, with no `boxlite serve` reaping. Needs a detached box (`create`, `run -d`), else fails with `InvalidState` |
 
 **Example:**
 

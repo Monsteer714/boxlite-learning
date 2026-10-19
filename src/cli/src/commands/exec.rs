@@ -9,7 +9,8 @@ pub struct ExecArgs {
     #[command(flatten)]
     pub process: ProcessFlags,
 
-    /// Run command in the background (detached mode)
+    /// Run command in the background and print its execution id; it keeps
+    /// running after this client exits (the box must be detached)
     #[arg(short = 'd', long)]
     pub detach: bool,
 
@@ -52,8 +53,9 @@ impl BoxExecutor {
         let cmd = self.prepare_command();
         let mut execution = litebox.exec(cmd).await?;
 
-        // Detach mode: Exit immediately without waiting
+        // Detach mode: print the id to reattach by, and exit without waiting.
         if self.args.detach {
+            println!("{}", execution.id());
             return Ok(0);
         }
 
@@ -89,7 +91,9 @@ impl BoxExecutor {
     }
 
     fn prepare_command(&self) -> BoxCommand {
-        let cmd = BoxCommand::new(&self.args.command[0]).args(&self.args.command[1..]);
+        let cmd = BoxCommand::new(&self.args.command[0])
+            .args(&self.args.command[1..])
+            .detach(self.args.detach);
         self.args.process.configure_command(cmd)
     }
 }
