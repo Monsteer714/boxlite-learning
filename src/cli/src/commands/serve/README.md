@@ -202,14 +202,16 @@ POST /v1/boxes/{box_id}/exec
   │
   ├─ get_or_resume_box(state, box_id)         — resolve LiteBox; 409 if the box
   │                                             is down and AutoResume is off
-  ├─ build_box_command(req)                    — JSON body → BoxCommand
-  ├─ litebox.run(cmd)                          — start command (returns Execution)
+  ├─ build_box_command(req)                    — JSON body → BoxCommand (incl. detach)
+  ├─ litebox.exec(cmd)                         — start command (returns Execution);
+  │                                             409 if detach on a box without detach
   │
   ├─ execution.stdin()                         — take stdin handle
   │    └─ if req.stdin is Some:
   │         stdin.write_all(data) + close       — write inline stdin, discard handle
   │
-  └─ ActiveExecution::new(box_id, execution, stdin)  — wrap in server-side state
+  └─ ActiveExecution::new(box_id, Exec, execution, stdin)  — wrap in server-side state
+     (ActiveExecution::new_detached(...) when req.detach)
        │
        ├─ execution.stdout() / .stderr()       — take single-consumer stream halves
        │
@@ -311,6 +313,12 @@ reconnect, escalation flags reset — a fresh disconnect starts a fresh reap clo
 A background task (`tokio::spawn`) that ticks every 30 s, cleaning up executions whose attach
 client disconnected and never came back.
 
+Two kinds of session outlive their clients and are never escalated or capped
+(`ActiveExecution::outlives_clients`): the box's main session, and an exec started with
+`"detach": true`. Both end with their box. A detached exec needs a box created with
+`detach: true`; otherwise `POST /exec` answers 409. The server advertises the field as
+`capabilities.exec_detach_enabled`. Finished sessions of either kind are still evicted.
+
 ### Escalation Timeline
 
 ```
@@ -327,6 +335,7 @@ Client disconnects
 
 Hard cap:  24 h (BOXLITE_MAX_SESSION_LIFETIME) → immediate SIGKILL
 Completed: 5 min after exit → evict from map
+Exempt:    main session and detached execs skip both timelines above
 ```
 
 ### Reaper Call Graph
@@ -347,6 +356,8 @@ run_reap_once(state, now, ...)
   └─ for each (id, active):
        │
        ├─ is_done() + !should_retain(now)  → evict from map
+       │
+       ├─ outlives_clients()               → skip (main session or detached exec)
        │
        ├─ lifetime > max_lifetime          → mark_reaping_kill + try_kill_and_evict
        │
