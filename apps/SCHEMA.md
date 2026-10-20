@@ -61,6 +61,7 @@ flowchart LR
         t_imgtag["image_tag"]
         t_imgevent["image_tag_event"]
         t_regcred["registry_credential"]
+        t_secret["secret"]
     end
 
     subgraph metering["Metering"]
@@ -95,6 +96,7 @@ flowchart LR
     t_box -.->|"volumes[].volumeId"| t_volume
     t_volume -.->|"organizationId"| t_org
     t_regcred -.->|"organizationId"| t_org
+    t_secret -.->|"organizationId"| t_org
     t_job -.->|"resourceId"| t_box
     t_job -.->|"runnerId"| t_runner
     t_period -.->|"boxId"| t_box
@@ -634,6 +636,23 @@ prefix in an organization; its leading columns also serve the lookup by
 organization and host. `registry_credential_prefix_shape` holds a prefix to
 whole path segments, `''` or ending in `/`, so `acme/` cannot match
 `acme-other/app`.
+
+### `secret`
+
+A secret an organization stores once for its boxes to use by name. The value
+is sealed, and the entity maps its column with `select: false`, so loading or
+listing a secret cannot return it.
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| `id` | `uuid` | primary key |
+| `organizationId` | `uuid` | not null |
+| `name` | `character varying(255)` | unique per organization (`secret_org_name_unique`) |
+| `hosts` | `text[]` | the hosts the proxy substitutes the value for |
+| `placeholder` | `character varying(255)` | nullable; null takes `<BOXLITE_SECRET:{name}>` |
+| `value` | `text` | `enc:v1:` AES-256-GCM ciphertext from `SecretCipher`, with `secret:<id>` as associated data |
+| `createdBy` | `character varying` | nullable — the identity provider's subject, not a uuid |
+| `createdAt` / `updatedAt` | `timestamptz` | |
 
 ### `job`
 

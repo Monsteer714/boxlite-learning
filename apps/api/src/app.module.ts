@@ -12,6 +12,7 @@ import { UserModule } from './user/user.module'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { BoxModule } from './box/box.module'
 import { RegistryModule } from './registry/registry.module'
+import { SecretModule } from './secret/secret.module'
 import { AuthModule } from './auth/auth.module'
 import { ServeStaticModule } from '@nestjs/serve-static'
 import { join } from 'path'
@@ -176,6 +177,7 @@ import { BoxliteRestModule } from './boxlite-rest/boxlite-rest.module'
     UserModule,
     BoxModule,
     RegistryModule,
+    SecretModule,
     ScheduleModule.forRoot(),
     UsageModule,
     AnalyticsModule,
