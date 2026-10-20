@@ -2456,18 +2456,23 @@ mod tests {
             last_activity: RwLock::new(HashMap::new()),
         });
 
-        for secret in [
-            r#"{"name":"openai","value":"v","hosts":["api.openai.com"],"placeholder":""}"#,
-            r#"{"name":"openai","value":"v","hosts":[]}"#,
+        // Failures name the case, not the entry: printing an entry that holds
+        // a value is what CodeQL's cleartext-logging check flags.
+        for (case, entry) in [
+            (
+                "empty placeholder",
+                r#"{"name":"openai","value":"v","hosts":["api.openai.com"],"placeholder":""}"#,
+            ),
+            ("no hosts", r#"{"name":"openai","value":"v","hosts":[]}"#),
         ] {
             let req: types::CreateBoxRequest = serde_json::from_str(&format!(
-                r#"{{"image":"alpine:latest","secrets":[{secret}]}}"#
+                r#"{{"image":"alpine:latest","secrets":[{entry}]}}"#
             ))
             .expect("body must deserialize");
             let response =
                 handlers::boxes::create_box(axum::extract::State(state.clone()), axum::Json(req))
                     .await;
-            assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{secret}");
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{case}");
         }
         assert!(
             runtime.list_info().await.expect("list boxes").is_empty(),
