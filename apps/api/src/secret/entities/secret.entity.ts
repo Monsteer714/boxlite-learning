@@ -5,7 +5,9 @@
 
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 
-// A secret an organization stores once and boxes use by name.
+// A secret an organization stores once and boxes use by name. The value is in
+// no column here: each version holds its own, sealed, in `secret_version`, so
+// nothing that loads or lists this row can return one.
 @Entity()
 @Index('secret_org_name_unique', ['organizationId', 'name'], { unique: true })
 export class Secret {
@@ -29,11 +31,9 @@ export class Secret {
   @Column({ type: 'varchar', length: 255, nullable: true })
   placeholder: string | null
 
-  // Sealed by SecretCipher with `secretContext`, never plaintext. Left out of
-  // every load unless a query selects it, so listing or returning a secret
-  // cannot carry its value.
-  @Column({ type: 'text', select: false })
-  value: string
+  // The version a box gets when it uses this secret.
+  @Column({ type: 'int' })
+  currentVersion: number
 
   // The user's identity provider subject, as on `registry_credential`.
   @Column({ type: 'varchar', nullable: true })

@@ -62,6 +62,7 @@ flowchart LR
         t_imgevent["image_tag_event"]
         t_regcred["registry_credential"]
         t_secret["secret"]
+        t_secretver["secret_version"]
     end
 
     subgraph metering["Metering"]
@@ -97,6 +98,7 @@ flowchart LR
     t_volume -.->|"organizationId"| t_org
     t_regcred -.->|"organizationId"| t_org
     t_secret -.->|"organizationId"| t_org
+    t_secretver ==>|"secretId"| t_secret
     t_job -.->|"resourceId"| t_box
     t_job -.->|"runnerId"| t_runner
     t_period -.->|"boxId"| t_box
@@ -640,8 +642,9 @@ whole path segments, `''` or ending in `/`, so `acme/` cannot match
 ### `secret`
 
 A secret an organization stores once for its boxes to use by name. The value
-is sealed, and the entity maps its column with `select: false`, so loading or
-listing a secret cannot return it.
+is in no column here: each version holds its own in `secret_version`, so
+loading or listing a secret cannot return one. Hosts and placeholder belong to
+the secret, not to a version, and change in place.
 
 | Column | Type | Notes |
 | ------ | ---- | ----- |
@@ -650,9 +653,23 @@ listing a secret cannot return it.
 | `name` | `character varying(255)` | unique per organization (`secret_org_name_unique`) |
 | `hosts` | `text[]` | the hosts the proxy substitutes the value for |
 | `placeholder` | `character varying(255)` | nullable; null takes `<BOXLITE_SECRET:{name}>` |
-| `value` | `text` | `enc:v1:` AES-256-GCM ciphertext from `SecretCipher`, with `secret:<id>` as associated data |
+| `currentVersion` | `integer` | the version boxes get |
 | `createdBy` | `character varying` | nullable — the identity provider's subject, not a uuid |
 | `createdAt` / `updatedAt` | `timestamptz` | |
+
+### `secret_version`
+
+One value a secret has held. A value update inserts the next version and moves
+`secret.currentVersion`; no version is edited or pruned. Deleting the secret
+deletes its versions (`ON DELETE CASCADE`).
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| `secretId` | `uuid` | primary key with `version`; FK to `secret` |
+| `version` | `integer` | 1, 2, … per secret |
+| `value` | `text` | `enc:v1:` AES-256-GCM ciphertext from `SecretCipher`, with `secret:<secretId>:version:<version>` as associated data |
+| `createdBy` | `character varying` | nullable |
+| `createdAt` | `timestamptz` | |
 
 ### `job`
 

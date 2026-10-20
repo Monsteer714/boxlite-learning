@@ -4,49 +4,52 @@
  */
 
 import { ConflictException, NotFoundException } from '@nestjs/common'
-import { getMetadataArgsStorage, Repository } from 'typeorm'
+import { Repository } from 'typeorm'
 import { SecretCipher } from '../../encryption/secret-cipher'
+import { SecretVersion } from '../entities/secret-version.entity'
 import { Secret } from '../entities/secret.entity'
-import { SecretsService, secretContext } from './secrets.service'
+import { SecretsService, secretVersionContext } from './secrets.service'
 
 const ORG = '0aaa0000-0000-4000-8000-000000000001'
 const cipher = SecretCipher.fromSettings('test-encryption-key', 'test-salt')
 
 function build(stored: Partial<Secret> | null = null) {
+  const manager = {
+    insert: jest.fn<Promise<void>, [unknown, unknown]>(async () => undefined),
+    findOne: jest.fn(async () => (stored ? { ...stored } : null)),
+    save: jest.fn(async (_entity: unknown, row: unknown) => row),
+  }
   const secrets = {
     find: jest.fn(async () => []),
-    findOneBy: jest.fn(async () => (stored ? { ...stored } : null)),
     findOneByOrFail: jest.fn(async ({ id }: { id: string }) => ({ id })),
-    insert: jest.fn<Promise<void>, [Record<string, unknown>]>(async () => undefined),
-    update: jest.fn<Promise<void>, [unknown, Record<string, unknown>]>(async () => undefined),
     delete: jest.fn(async () => ({ affected: stored ? 1 : 0 })),
+    manager: { transaction: jest.fn(async (callback: (m: typeof manager) => unknown) => callback(manager)) },
   }
   const service = new SecretsService(secrets as unknown as Repository<Secret>, cipher)
-  return { service, secrets }
+  const inserted = (entity: unknown) =>
+    manager.insert.mock.calls.filter(([target]) => target === entity).map(([, row]) => row as Record<string, unknown>)
+  return { service, manager, secrets, inserted }
 }
 
 describe('SecretsService', () => {
-  it('never loads the value column unless a query asks for it', () => {
-    const column = getMetadataArgsStorage().columns.find((c) => c.target === Secret && c.propertyName === 'value')
-
-    expect(column?.options.select).toBe(false)
-  })
-
   describe('create', () => {
-    it('stores the value sealed to the new secret', async () => {
-      const { service, secrets } = build()
+    it('stores version 1 sealed to that version and keeps the value off the secret row', async () => {
+      const { service, inserted } = build()
 
       await service.create(ORG, 'user-1', { name: 'openai', value: 'sk-test', hosts: ['api.openai.com'] })
 
-      const [row] = secrets.insert.mock.calls[0]
-      expect(row).toMatchObject({ organizationId: ORG, name: 'openai', placeholder: null, createdBy: 'user-1' })
-      expect(SecretCipher.isSealed(row.value as string)).toBe(true)
-      expect(cipher.open(row.value as string, secretContext(row.id as string))).toBe('sk-test')
+      const [secret] = inserted(Secret)
+      expect(secret).toMatchObject({ organizationId: ORG, name: 'openai', currentVersion: 1, placeholder: null })
+      expect(secret).not.toHaveProperty('value')
+      const [version] = inserted(SecretVersion)
+      expect(version).toMatchObject({ secretId: secret.id, version: 1, createdBy: 'user-1' })
+      expect(SecretCipher.isSealed(version.value as string)).toBe(true)
+      expect(cipher.open(version.value as string, secretVersionContext(secret.id as string, 1))).toBe('sk-test')
     })
 
     it('answers a taken name with 409 already_exists', async () => {
-      const { service, secrets } = build()
-      secrets.insert.mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' }))
+      const { service, manager } = build()
+      manager.insert.mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' }))
 
       const created = service.create(ORG, null, { name: 'openai', value: 'sk-test', hosts: ['api.openai.com'] })
 
@@ -56,37 +59,46 @@ describe('SecretsService', () => {
   })
 
   describe('update', () => {
-    const stored = { id: 'secret-1', organizationId: ORG, name: 'openai', hosts: ['api.openai.com'] }
+    const stored = { id: 'secret-1', organizationId: ORG, name: 'openai', hosts: ['api.openai.com'], currentVersion: 1 }
 
-    it('seals a new value to the same secret', async () => {
-      const { service, secrets } = build(stored)
+    it('adds a new value as the next version and makes it current', async () => {
+      const { service, manager, inserted } = build(stored)
 
-      await service.update(ORG, 'openai', { value: 'sk-rotated' })
+      const updated = await service.update(ORG, 'openai', 'user-2', { value: 'sk-rotated' })
 
-      const [, changes] = secrets.update.mock.calls[0]
-      expect(SecretCipher.isSealed(changes.value as string)).toBe(true)
-      expect(cipher.open(changes.value as string, secretContext('secret-1'))).toBe('sk-rotated')
+      const [version] = inserted(SecretVersion)
+      expect(version).toMatchObject({ secretId: 'secret-1', version: 2, createdBy: 'user-2' })
+      expect(SecretCipher.isSealed(version.value as string)).toBe(true)
+      expect(cipher.open(version.value as string, secretVersionContext('secret-1', 2))).toBe('sk-rotated')
+      expect(updated.currentVersion).toBe(2)
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Secret,
+        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      )
     })
 
-    it('changes hosts without touching the value', async () => {
-      const { service, secrets } = build(stored)
+    it('changes hosts in place without adding a version', async () => {
+      const { service, inserted } = build(stored)
 
-      await service.update(ORG, 'openai', { hosts: ['*.openai.com'] })
+      const updated = await service.update(ORG, 'openai', null, { hosts: ['*.openai.com'] })
 
-      expect(Object.keys(secrets.update.mock.calls[0][1])).toEqual(['hosts'])
+      expect(inserted(SecretVersion)).toHaveLength(0)
+      expect(updated).toMatchObject({ hosts: ['*.openai.com'], currentVersion: 1 })
     })
 
-    it('returns the secret unchanged when nothing is given', async () => {
-      const { service, secrets } = build(stored)
+    it('adds no version and keeps the secret when nothing is given', async () => {
+      const { service, inserted } = build(stored)
 
-      await expect(service.update(ORG, 'openai', {})).resolves.toMatchObject({ id: 'secret-1' })
-      expect(secrets.update).not.toHaveBeenCalled()
+      const updated = await service.update(ORG, 'openai', null, {})
+
+      expect(inserted(SecretVersion)).toHaveLength(0)
+      expect(updated).toMatchObject({ id: 'secret-1', currentVersion: 1 })
     })
 
     it('answers an unknown name with 404', async () => {
       const { service } = build()
 
-      await expect(service.update(ORG, 'missing', { value: 'x' })).rejects.toBeInstanceOf(NotFoundException)
+      await expect(service.update(ORG, 'missing', null, { value: 'x' })).rejects.toBeInstanceOf(NotFoundException)
     })
   })
 

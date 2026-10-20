@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { randomUUID } from 'node:crypto'
 import { Repository } from 'typeorm'
 import { SecretCipher } from '../../encryption/secret-cipher'
+import { SecretVersion } from '../entities/secret-version.entity'
 import { Secret } from '../entities/secret.entity'
 
 const PG_UNIQUE_VIOLATION = '23505'
@@ -25,14 +26,15 @@ export interface UpdateSecretParams {
   placeholder?: string | null
 }
 
-/** Ties a sealed value to its secret, so a value copied to another row fails to open. */
-export function secretContext(secretId: string): string {
-  return `secret:${secretId}`
+/** Ties a sealed value to its secret and version, so a value copied elsewhere fails to open. */
+export function secretVersionContext(secretId: string, version: number): string {
+  return `secret:${secretId}:version:${version}`
 }
 
 /**
  * An organization's stored secrets. A value is sealed the moment it arrives
- * and is never returned: the value column is left out of every load.
+ * and is never returned: each value is a version row of its own, and what
+ * comes back, and what can be listed, is the secret row, which has no value.
  */
 @Injectable()
 export class SecretsService {
@@ -49,14 +51,17 @@ export class SecretsService {
   async create(organizationId: string, createdBy: string | null, params: CreateSecretParams): Promise<Secret> {
     const id = randomUUID()
     try {
-      await this.secrets.insert({
-        id,
-        organizationId,
-        name: params.name,
-        hosts: params.hosts,
-        placeholder: params.placeholder ?? null,
-        value: this.cipher.seal(params.value, secretContext(id)),
-        createdBy,
+      await this.secrets.manager.transaction(async (manager) => {
+        await manager.insert(Secret, {
+          id,
+          organizationId,
+          name: params.name,
+          hosts: params.hosts,
+          placeholder: params.placeholder ?? null,
+          currentVersion: 1,
+          createdBy,
+        })
+        await manager.insert(SecretVersion, this.sealedVersion(id, 1, params.value, createdBy))
       })
     } catch (error) {
       if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) {
@@ -70,33 +75,56 @@ export class SecretsService {
     return this.secrets.findOneByOrFail({ id })
   }
 
-  async update(organizationId: string, name: string, params: UpdateSecretParams): Promise<Secret> {
-    const secret = await this.secrets.findOneBy({ organizationId, name })
-    if (!secret) {
-      throw new NotFoundException(`Secret ${name} not found`)
-    }
-    const changes: Partial<Secret> = {}
-    if (params.value !== undefined) {
-      changes.value = this.cipher.seal(params.value, secretContext(secret.id))
-    }
-    if (params.hosts !== undefined) {
-      changes.hosts = params.hosts
-    }
-    if (params.placeholder !== undefined) {
-      changes.placeholder = params.placeholder
-    }
-    // TypeORM refuses an update with nothing to set.
-    if (Object.keys(changes).length === 0) {
-      return secret
-    }
-    await this.secrets.update({ id: secret.id }, changes)
-    return this.secrets.findOneByOrFail({ id: secret.id })
+  /** A new value becomes the next version; hosts and placeholder change in place. */
+  async update(
+    organizationId: string,
+    name: string,
+    updatedBy: string | null,
+    params: UpdateSecretParams,
+  ): Promise<Secret> {
+    return this.secrets.manager.transaction(async (manager) => {
+      // Locked so two concurrent updates cannot both claim the next version.
+      const secret = await manager.findOne(Secret, {
+        where: { organizationId, name },
+        lock: { mode: 'pessimistic_write' },
+      })
+      if (!secret) {
+        throw new NotFoundException(`Secret ${name} not found`)
+      }
+      if (params.value !== undefined) {
+        const version = secret.currentVersion + 1
+        await manager.insert(SecretVersion, this.sealedVersion(secret.id, version, params.value, updatedBy))
+        secret.currentVersion = version
+      }
+      if (params.hosts !== undefined) {
+        secret.hosts = params.hosts
+      }
+      if (params.placeholder !== undefined) {
+        secret.placeholder = params.placeholder
+      }
+      return manager.save(Secret, secret)
+    })
   }
 
+  /** Removes the secret and, by cascade, every version of it. */
   async delete(organizationId: string, name: string): Promise<void> {
     const result = await this.secrets.delete({ organizationId, name })
     if (!result.affected) {
       throw new NotFoundException(`Secret ${name} not found`)
+    }
+  }
+
+  private sealedVersion(
+    secretId: string,
+    version: number,
+    value: string,
+    createdBy: string | null,
+  ): Partial<SecretVersion> {
+    return {
+      secretId,
+      version,
+      value: this.cipher.seal(value, secretVersionContext(secretId, version)),
+      createdBy,
     }
   }
 }
