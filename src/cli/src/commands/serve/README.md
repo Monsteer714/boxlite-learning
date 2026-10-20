@@ -317,7 +317,8 @@ Two kinds of session outlive their clients and are never escalated or capped
 (`ActiveExecution::outlives_clients`): the box's main session, and an exec started with
 `"detach": true`. Both end with their box. A detached exec needs a box created with
 `detach: true`; otherwise `POST /exec` answers 409. The server advertises the field as
-`capabilities.exec_detach_enabled`. Finished sessions of either kind are still evicted.
+`capabilities.exec_detach_enabled`. Finished sessions of either kind are still evicted, and a
+`DELETE` whose kill timed out is still retried by the next tick.
 
 ### Escalation Timeline
 
@@ -357,11 +358,11 @@ run_reap_once(state, now, ...)
        │
        ├─ is_done() + !should_retain(now)  → evict from map
        │
+       ├─ already reaping_kill             → try_kill_and_evict  (retry a prior tick or failed DELETE)
+       │
        ├─ outlives_clients()               → skip (main session or detached exec)
        │
        ├─ lifetime > max_lifetime          → mark_reaping_kill + try_kill_and_evict
-       │
-       ├─ already reaping_kill             → try_kill_and_evict  (retry from prior tick)
        │
        ├─ try_escalate_hup()               — SIGHUP if reconnect_grace expired
        │    ├─ signal OK  → finish_escalation()

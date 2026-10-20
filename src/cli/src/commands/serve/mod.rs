@@ -1033,6 +1033,15 @@ async fn run_reap_once(
             continue;
         }
 
+        // Retry kill for entries already marked doomed by a prior tick
+        // or a failed DELETE handler. This runs before the guard below: a
+        // DELETE is a client's explicit kill, which even a session that
+        // outlives clients must honor once the handler has given up.
+        if active.is_reaping_kill().await {
+            try_kill_and_evict(state, &id, &active).await;
+            continue;
+        }
+
         // A main session is never an orphan and never stale: it is the box's
         // init, so killing it powers the VM off and destroys the box. A client
         // walking away from `docker attach` does not stop the container, and
@@ -1040,9 +1049,10 @@ async fn run_reap_once(
         // *exec* sessions, not the workload they run beside. A detached exec
         // asked for the same: it outlives every client, bounded by its box.
         //
-        // Every branch below signals or kills, so both stop here. The
-        // done-eviction above still applies — a session whose process has
-        // exited really is finished, and evicting a dead entry kills nothing.
+        // Every branch below signals or kills on the reaper's own initiative,
+        // so both stop here. The done-eviction above still applies — a session
+        // whose process has exited really is finished, and evicting a dead
+        // entry kills nothing.
         if active.outlives_clients() {
             continue;
         }
@@ -1050,12 +1060,6 @@ async fn run_reap_once(
         if now.duration_since(active.created_at()) > max_lifetime {
             active.mark_reaping_kill().await;
             tracing::warn!(exec_id = %id, "session lifetime cap reached, killing");
-            try_kill_and_evict(state, &id, &active).await;
-            continue;
-        }
-        // Retry kill for entries already marked doomed by a prior tick
-        // or a failed DELETE handler.
-        if active.is_reaping_kill().await {
             try_kill_and_evict(state, &id, &active).await;
             continue;
         }
@@ -4607,6 +4611,55 @@ mod tests {
         assert!(
             !surviving.contains_key("exec-plain"),
             "a plain exec past the caps must still be killed and evicted"
+        );
+    }
+
+    /// A DELETE whose kill times out marks the session and answers "the
+    /// reaper will retry". Sparing a detached exec from client-absence
+    /// reaping must not also skip that retry, or the doomed exec keeps
+    /// running, unattachable, until its box stops.
+    #[tokio::test]
+    async fn reaper_retries_a_failed_delete_of_a_detached_exec() {
+        let runtime = BoxliteRuntime::rest(boxlite::BoxliteRestOptions::new(
+            "http://127.0.0.1:1".to_string(),
+        ))
+        .expect("rest runtime");
+        let state = AppState {
+            runtime,
+            boxes: RwLock::new(HashMap::new()),
+            executions: RwLock::new(HashMap::new()),
+            api_key: None,
+            lifecycle: RwLock::new(HashMap::new()),
+            last_activity: RwLock::new(HashMap::new()),
+        };
+
+        let (agent_exec, _agent_channels) = stub_execution("exec-detached");
+        let agent = Arc::new(ActiveExecution::new_detached(
+            "box1".to_string(),
+            agent_exec,
+            None,
+        ));
+        state
+            .executions
+            .write()
+            .await
+            .insert("exec-detached".to_string(), Arc::clone(&agent));
+
+        // What `kill_execution` leaves behind when its kill times out.
+        agent.mark_reaping_kill().await;
+
+        run_reap_once(
+            &state,
+            Instant::now(),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+            Duration::from_secs(60),
+        )
+        .await;
+
+        assert!(
+            !state.executions.read().await.contains_key("exec-detached"),
+            "the reaper must retry the kill a failed DELETE handed it"
         );
     }
 }
