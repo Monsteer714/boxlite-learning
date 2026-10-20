@@ -147,6 +147,8 @@ tags:
     description: Managed persistent volumes
   - name: Registries
     description: Logins the server pulls private images with
+  - name: Secrets
+    description: Values the organization stores once for its boxes to use by name
 
 # ===========================================================================
 # Paths
@@ -1387,6 +1389,104 @@ paths:
         "409":
           $ref: "#/components/responses/ConflictError"
 
+  # -------------------------------------------------------------------------
+  # Secrets
+  # -------------------------------------------------------------------------
+  /{prefix}/secrets:
+    parameters:
+      - $ref: "#/components/parameters/prefix"
+
+    get:
+      operationId: listSecrets
+      summary: List stored secrets
+      description: |
+        The organization's stored secrets, by name. No secret carries its
+        value.
+      tags: [Secrets]
+      responses:
+        "200":
+          description: The routing slot's stored secrets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSecretsResponse"
+
+    post:
+      operationId: createSecret
+      summary: Store a secret
+      description: |
+        The value is stored encrypted as version 1 and never returned. A name
+        is held once per organization: a second secret with it is refused with
+        `AlreadyExistsError`.
+      tags: [Secrets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSecretRequest"
+      responses:
+        "201":
+          description: The secret, without its value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoredSecret"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "409":
+          description: A secret with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  message: "A secret named openai already exists; update it instead"
+                  type: AlreadyExistsError
+                  code: already_exists
+
+  /{prefix}/secrets/{secret_name}:
+    parameters:
+      - $ref: "#/components/parameters/prefix"
+      - $ref: "#/components/parameters/secretName"
+
+    patch:
+      operationId: updateSecret
+      summary: Change a stored secret
+      description: |
+        A new value becomes the secret's next version; hosts and placeholder
+        change in place. Fields left out keep their current value.
+      tags: [Secrets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSecretRequest"
+      responses:
+        "200":
+          description: The secret, without its value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoredSecret"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      operationId: removeSecret
+      summary: Remove a stored secret
+      description: Removes the secret and every version of its value.
+      tags: [Secrets]
+      responses:
+        "204":
+          description: The secret and its versions are gone
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
 # ===========================================================================
 # Components
 # ===========================================================================
@@ -1515,6 +1615,14 @@ components:
       schema:
         type: string
         format: uuid
+
+    secretName:
+      name: secret_name
+      in: path
+      required: true
+      description: The stored secret's name, unique in its organization
+      schema:
+        type: string
 
     volumeId:
       name: volume_id
@@ -2974,3 +3082,89 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RegistryCredential"
+
+    CreateSecretRequest:
+      type: object
+      required: [name, value, hosts]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: openai
+        value:
+          type: string
+          description: The secret value. Stored encrypted and never returned.
+          writeOnly: true
+          minLength: 1
+        hosts:
+          type: array
+          description: The hosts whose requests receive the value, in request headers only
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+          example: [api.openai.com]
+        placeholder:
+          type: string
+          description: The token a box sends in place of the value; defaults to `<BOXLITE_SECRET:{name}>`
+          minLength: 1
+          maxLength: 255
+
+    UpdateSecretRequest:
+      type: object
+      properties:
+        value:
+          type: string
+          description: A new value, which becomes the next version. Never returned.
+          writeOnly: true
+          minLength: 1
+        hosts:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        placeholder:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    StoredSecret:
+      type: object
+      description: A stored secret. There is no value field.
+      required: [name, hosts, placeholder, current_version, created_at, updated_at]
+      properties:
+        name:
+          type: string
+          example: openai
+        hosts:
+          type: array
+          items:
+            type: string
+          example: [api.openai.com]
+        placeholder:
+          type: [string, "null"]
+          description: Null when the secret uses `<BOXLITE_SECRET:{name}>`
+        current_version:
+          type: integer
+          minimum: 1
+          description: The version a box gets when it uses the secret
+        created_by:
+          type: [string, "null"]
+          description: The user who stored it
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ListSecretsResponse:
+      type: object
+      required: [secrets]
+      properties:
+        secrets:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoredSecret"

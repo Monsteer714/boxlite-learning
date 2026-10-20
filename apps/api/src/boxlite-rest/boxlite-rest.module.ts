@@ -20,10 +20,21 @@ import { BoxliteImageController } from './boxlite-image.controller'
 import { ImageModule } from '../image/image.module'
 import { BoxliteRegistryController } from './boxlite-registry.controller'
 import { RegistryModule } from '../registry/registry.module'
+import { BoxliteSecretController } from './boxlite-secret.controller'
+import { SecretModule } from '../secret/secret.module'
 import { CommerceBoxLimitService } from './commerce-box-limit.service'
 
 @Module({
-  imports: [BoxModule, AuthModule, ApiKeyModule, OrganizationModule, UserModule, ImageModule, RegistryModule],
+  imports: [
+    BoxModule,
+    AuthModule,
+    ApiKeyModule,
+    OrganizationModule,
+    UserModule,
+    ImageModule,
+    RegistryModule,
+    SecretModule,
+  ],
   controllers: [
     BoxliteMeController,
     BoxliteConfigController,
@@ -31,6 +42,7 @@ import { CommerceBoxLimitService } from './commerce-box-limit.service'
     BoxliteProxyController,
     BoxliteVolumeController,
     BoxliteRegistryController,
+    BoxliteSecretController,
     BoxliteImageController,
   ],
   providers: [BoxliteWsProxyService, CommerceBoxLimitService],

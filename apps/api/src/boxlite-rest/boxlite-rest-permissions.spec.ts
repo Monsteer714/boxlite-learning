@@ -10,6 +10,7 @@ import { RequiredOrganizationResourcePermissions } from '../organization/decorat
 import { OrganizationResourcePermission } from '../organization/enums/organization-resource-permission.enum'
 import { BoxliteBoxController } from './boxlite-box.controller'
 import { BoxliteProxyController } from './boxlite-proxy.controller'
+import { BoxliteSecretController } from './boxlite-secret.controller'
 
 // http-proxy-middleware ships ESM only and the proxy controller imports it at
 // module scope; mock it the way the routing spec does so the class can load.
@@ -47,6 +48,12 @@ const EXPECTED: Record<string, OrganizationResourcePermission[] | null> = {
   proxyNetworkTunnel: [WRITE_BOXES],
   proxyExecStatus: null,
   proxyMetrics: null,
+  // secret controller: secrets ride on the box permissions until they have
+  // their own; listing shows no value.
+  list: null,
+  create: [WRITE_BOXES],
+  update: [WRITE_BOXES],
+  remove: [DELETE_BOXES],
 }
 
 type Controller = { new (...args: never[]): unknown; name: string }
@@ -60,7 +67,11 @@ function routeMethods(controller: Controller): string[] {
 }
 
 describe('REST box/proxy permission coverage (GHSA-2qqv-7cwv-mj8h)', () => {
-  const controllers: Controller[] = [BoxliteBoxController as Controller, BoxliteProxyController as Controller]
+  const controllers: Controller[] = [
+    BoxliteBoxController as Controller,
+    BoxliteProxyController as Controller,
+    BoxliteSecretController as Controller,
+  ]
   const handlers = controllers.flatMap((controller) =>
     routeMethods(controller).map((method) => [`${controller.name}.${method}`, controller, method] as const),
   )

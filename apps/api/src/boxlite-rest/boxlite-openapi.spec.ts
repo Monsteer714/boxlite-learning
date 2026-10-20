@@ -12,6 +12,8 @@ import { ImageCatalogService } from '../image/services/image-catalog.service'
 import { RegistriesService } from '../registry/services/registries.service'
 import { BoxliteImageController } from './boxlite-image.controller'
 import { BoxliteRegistryController } from './boxlite-registry.controller'
+import { SecretsService } from '../secret/services/secrets.service'
+import { BoxliteSecretController } from './boxlite-secret.controller'
 
 const spec = parse(readFileSync(resolve(__dirname, '../../../../openapi/box.openapi.yaml'), 'utf8'))
 // Ajv also implements OAS 3.0 nullable. Ignore that annotation to test the
@@ -141,6 +143,23 @@ describe('Box API JSON Schema nullability', () => {
     const controller = new BoxliteRegistryController(registries as unknown as RegistriesService)
     const response = JSON.parse(JSON.stringify(await controller.list({ organizationId: 'org-1' } as never)))
     expect(validator('ListRegistriesResponse')(response)).toBe(true)
+  })
+
+  it('validates actual secret responses with a default placeholder and no creating user', async () => {
+    const secret = {
+      name: 'openai',
+      hosts: ['api.openai.com'],
+      placeholder: null,
+      currentVersion: 1,
+      createdBy: null,
+      createdAt: new Date('2026-10-20T00:00:00Z'),
+      updatedAt: new Date('2026-10-20T00:00:00Z'),
+    }
+    const secrets = { list: jest.fn().mockResolvedValue([secret]) }
+    const controller = new BoxliteSecretController(secrets as unknown as SecretsService)
+    const response = JSON.parse(JSON.stringify(await controller.list({ organizationId: 'org-1' } as never)))
+    expect(validator('ListSecretsResponse')(response)).toBe(true)
+    expect(spec.components.schemas.StoredSecret.properties).not.toHaveProperty('value')
   })
 
   it.each([

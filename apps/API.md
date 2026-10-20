@@ -399,7 +399,9 @@ permission and are reached by any member, because the model has no `read:boxes`.
 Volume routes require `read:volumes`, `write:volumes`, or `delete:volumes` to
 match, image routes `read:images`, `write:images`, or `delete:images`, and
 registry login routes `read:registries`, `write:registries`, or
-`delete:registries`. Attaching a managed volume while creating a box is authorized
+`delete:registries`. Secrets have no permission of their own: creating or
+changing one requires `write:boxes`, removing one `delete:boxes`, and listing
+them carries no permission, like a box read. Attaching a managed volume while creating a box is authorized
 independently of `write:boxes`: the caller must also hold `read:volumes` and
 `write:volumes`, so a box-only credential cannot reach another's volume data
 (GHSA-2qqv-7cwv-mj8h). A system admin and an interactive owner without an API key
@@ -506,6 +508,22 @@ whose resolved proxy reference has lost its credential is also rejected before
 it is saved. Once a dependent box commits, deletion returns 409 with its ID.
 The dependency check reads candidate credentials once for the organization and
 registry host, then matches each box in memory using the longest repository prefix.
+
+</details>
+
+<details>
+<summary><b>Secrets</b> · 4 routes</summary>
+
+| Method   | Path                                   | What it does                                                                        |
+| -------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1[/{prefix}]/secrets`           | Lists the organization's stored secrets by name, with hosts and current version.   |
+| `POST`   | `/api/v1[/{prefix}]/secrets`           | Stores a secret as version 1; a taken name is `already_exists`.                     |
+| `PATCH`  | `/api/v1[/{prefix}]/secrets/{name}`    | Changes hosts or placeholder in place; a new value becomes the next version.        |
+| `DELETE` | `/api/v1[/{prefix}]/secrets/{name}`    | Removes the secret and every version of its value.                                  |
+
+Values are sealed with AES-256-GCM (`SecretCipher`) and never returned; answers
+and audit records carry the name, hosts and placeholder only. There is no
+console route for secrets.
 
 </details>
 
