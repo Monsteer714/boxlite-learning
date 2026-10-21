@@ -96,6 +96,14 @@ describe('BoxliteSecretController', () => {
     })
   })
 
+  // The global ValidationPipe keeps unknown fields, so an update body can
+  // carry a name; the route changes the secret in the path.
+  it('names the secret from the path even when an update body names another', () => {
+    expect(auditedBody('update', { body: { name: 'other', value: VALUE }, params: { name: 'openai' } })).toMatchObject({
+      name: 'openai',
+    })
+  })
+
   describe('request bodies', () => {
     const errorsOf = async (dto: new () => object, body: object) =>
       (await validate(plainToInstance(dto, body))).flatMap((error) => Object.values(error.constraints ?? {}))

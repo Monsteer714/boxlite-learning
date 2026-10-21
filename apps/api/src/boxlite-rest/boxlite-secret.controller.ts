@@ -31,7 +31,7 @@ type RestSecret = {
 
 // Named fields, never the body: the body carries the value.
 const auditedFields = (req: TypedRequest<CreateSecretDto | UpdateSecretDto>) => ({
-  name: (req.body as CreateSecretDto | undefined)?.name ?? req.params?.name,
+  name: req.params?.name ?? (req.body as CreateSecretDto | undefined)?.name,
   hosts: req.body?.hosts,
   placeholder: req.body?.placeholder,
 })
