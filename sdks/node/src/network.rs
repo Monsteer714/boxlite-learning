@@ -143,6 +143,15 @@ impl JsNetworkHandle {
             handle: Mutex::new(Some(tunnel)),
         })
     }
+
+    #[napi]
+    pub async fn revoke_tunnel(&self, port: u16) -> Result<()> {
+        self.handle
+            .network()
+            .revoke_tunnel(port)
+            .await
+            .map_err(map_err)
+    }
 }
 
 impl JsBoxTunnel {
@@ -191,7 +200,7 @@ impl JsBoxTunnel {
     #[napi]
     pub async fn connect(&self) -> Result<JsBoxConnection> {
         let tunnel = self.take()?;
-        let (reader, writer) = tunnel.connect().map_err(map_err)?.into_split();
+        let (reader, writer) = tunnel.connect().await.map_err(map_err)?.into_split();
         Ok(JsBoxConnection {
             reader: Arc::new(tokio::sync::Mutex::new(Some(reader))),
             writer: Arc::new(tokio::sync::Mutex::new(Some(writer))),

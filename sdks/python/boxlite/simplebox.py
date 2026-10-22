@@ -51,13 +51,17 @@ class NetworkHandle:
         self._owner = box
 
     async def tunnel(self, port: int) -> BoxTunnel:
-        """Establish and return a one-shot tunnel for a port inside the box."""
+        """Prepare a one-shot tunnel for a port inside the box."""
         if not self._owner._started:
             raise RuntimeError(
                 "Box not started. Use 'async with SimpleBox(...) as box:' "
                 "or call 'await box.start()' first."
             )
         return BoxTunnel(await self._owner._create_tunnel(port))
+
+    async def revoke_tunnel(self, port: int) -> None:
+        """Withdraw public access to a port; open connections are not closed."""
+        await self._owner._revoke_tunnel(port)
 
 
 class SimpleBox:
@@ -146,6 +150,14 @@ class SimpleBox:
         if not isinstance(port, int) or not 1 <= port <= 65535:
             raise ValueError("port must be an integer between 1 and 65535")
         return await self._box.network.tunnel(port)
+
+    async def _revoke_tunnel(self, port: int) -> None:
+        """Withdraw public access to a service port."""
+        if self._box is None:
+            raise RuntimeError("Box not created")
+        if not isinstance(port, int) or not 1 <= port <= 65535:
+            raise ValueError("port must be an integer between 1 and 65535")
+        await self._box.network.revoke_tunnel(port)
 
     async def __aenter__(self):
         """Async context manager entry - creates or reuses an existing box.
@@ -343,7 +355,7 @@ class SimpleBox:
         )
 
     async def tunnel(self, port: int) -> BoxTunnel:
-        """Establish and return a one-shot tunnel for a port inside this box."""
+        """Prepare a one-shot tunnel for a port inside this box."""
         return await self.network.tunnel(port)
 
     async def metrics(self):

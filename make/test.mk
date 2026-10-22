@@ -1,5 +1,5 @@
 PHONY_TARGETS += test test\:unit\:cli test\:unit\:vmm test\:unit\:guest test\:guest-perms test\:guest-artifacts test\:perf\:import-export _ensure-infra-deps test\:apps\:infra test\:apps\:infra-config test\:skill\:boxlite-diagrams
-PHONY_TARGETS += test\:integration\:vmm\:kvm _ensure-kvm test\:vmm\:boot
+PHONY_TARGETS += test\:integration\:vmm\:kvm test\:integration\:vmm\:elf test\:integration\:vmm\:linux _ensure-kvm test\:vmm\:boot
 
 # Mirrors GitHub Actions strategy.fail-fast. Default false: aggregator
 # targets run every sub-suite even if an earlier one fails, then exit
@@ -268,9 +268,10 @@ test\:unit\:cli:
 test\:unit\:vmm:
 	@cargo test $(RUST_UNIT_VMM_ARGS) -- $(CARGOTEST_FILTER)
 
-# Stubbed-tool contract tests for the kernel build script; they never compile Linux.
+# Stubbed-tool contract tests for the kernel build scripts; they never compile Linux or start a box.
 test\:vmm\:boot:
 	@python3 "$(PROJECT_ROOT)/src/vmm/boot/tests/test_build.py"
+	@python3 "$(PROJECT_ROOT)/src/vmm/boot/tests/test_box_build.py"
 
 # Missing /dev/kvm must fail hardware qualification, not report skipped tests as a pass.
 _ensure-kvm:
@@ -278,9 +279,30 @@ _ensure-kvm:
 	@test -r /dev/kvm -a -w /dev/kvm || { echo "Read/write access to /dev/kvm is required" >&2; exit 1; }
 
 # Run the ignored hardware tests explicitly and bound a stalled guest with a timeout.
+# Both crates run even when one fails, so one report shows every result.
 test\:integration\:vmm\:kvm: _ensure-kvm
-	@cargo test -p boxlite-hypervisor --lib --no-run
-	@timeout 60s cargo test -p boxlite-hypervisor --lib kvm::vm::tests:: -- --ignored --test-threads=1
+	@cargo test -p boxlite-hypervisor -p boxlite-vmm --lib --no-run
+	@status=0; \
+	timeout 60s cargo test -p boxlite-hypervisor --lib kvm::vm::tests:: -- --ignored --test-threads=1 || status=1; \
+	timeout 60s cargo test -p boxlite-vmm --lib vm::tests:: -- --ignored --test-threads=1 || status=1; \
+	exit $$status
+
+# make vmm:boot produces this kernel by default.
+VMM_KERNEL ?= $(CURDIR)/target/vmm/boot/x86_64/vmlinux
+export VMM_KERNEL
+
+# Load the real ELF kernel and read it through a KVM vCPU; this does not boot Linux.
+test\:integration\:vmm\:elf: _ensure-kvm
+	@test -r "$(VMM_KERNEL)" || { echo "VMM_KERNEL=$(VMM_KERNEL) is not readable; run make vmm:boot or set VMM_KERNEL" >&2; exit 1; }
+	@cargo test -p boxlite-vmm --lib --no-run
+	@timeout 60s cargo test -p boxlite-vmm --lib boot::elf::tests:: -- --ignored --test-threads=1
+
+# Boot the real kernel on KVM with a serial stub and no devices: up to its root-mount panic,
+# and with a generated initramfs up to the panic when its init exits.
+test\:integration\:vmm\:linux: _ensure-kvm
+	@test -r "$(VMM_KERNEL)" || { echo "VMM_KERNEL=$(VMM_KERNEL) is not readable; run make vmm:boot or set VMM_KERNEL" >&2; exit 1; }
+	@cargo test -p boxlite-vmm --lib --no-run
+	@timeout 60s cargo test -p boxlite-vmm --lib boot::tests:: -- --ignored --test-threads=1
 
 # Guest crate unit tests. Linux-only (the crate does not build elsewhere) and
 # excluded from test:unit:rust because the zygote suite forks real processes.
@@ -421,6 +443,9 @@ test\:unit\:openapi:
 	@echo "🧪 Running OpenAPI reference-server unit tests..."
 	@python3 -m unittest discover -s openapi/reference-server/tests -p 'test_error*.py' -v
 
+test\:unit\:scripts:
+	@python3 -m unittest discover -s tests/scripts -p 'test_*.py' -v
+
 # CLI integration tests.
 test\:integration\:cli: $(if $(SETUP_DONE),,runtime\:debug)
 	@echo "🧪 Running CLI integration tests..."
@@ -489,7 +514,7 @@ test\:unit\:c:
 	@echo "🧪 Running C SDK unit tests..."
 	@$(MAKE) dev:c
 	@mkdir -p sdks/c/tests/build
-	@cd sdks/c/tests/build && cmake ..
+	@cd sdks/c/tests/build && cmake .. -DBOXLITE_LIB_DIR="$(if $(CARGO_TARGET_DIR),$(abspath $(CARGO_TARGET_DIR)),$(PROJECT_ROOT)/target)/debug"
 	@cd sdks/c/tests/build && cmake --build . -j
 	@cd sdks/c/tests/build && ctest --verbose --output-on-failure -L unit $(CTEST_FILTER)
 
@@ -498,7 +523,7 @@ test\:integration\:c:
 	@echo "🧪 Running C SDK integration tests (requires VM)..."
 	@$(MAKE) dev:c
 	@mkdir -p sdks/c/tests/build
-	@cd sdks/c/tests/build && cmake ..
+	@cd sdks/c/tests/build && cmake .. -DBOXLITE_LIB_DIR="$(if $(CARGO_TARGET_DIR),$(abspath $(CARGO_TARGET_DIR)),$(PROJECT_ROOT)/target)/debug"
 	@cd sdks/c/tests/build && cmake --build . -j
 	@cd sdks/c/tests/build && ctest --verbose --output-on-failure -L integration $(CTEST_FILTER)
 
@@ -551,6 +576,10 @@ test\:apps\:infra-config: _ensure-apps-deps _ensure-infra-deps
 	@echo "🧪 Installing and type-checking the SST deployment config..."
 	@cd apps/infra && IAM_PERMISSIONS_BOUNDARY_STAGE=ci npm run sst -- install --stage ci
 	@cd apps/infra && npm run typecheck
+
+test\:apps\:api: _ensure-apps-deps
+	@echo "🧪 Running API unit tests..."
+	@cd apps && yarn nx run api:test --runInBand $(if $(FILTER),--testNamePattern '$(FILTER)',)
 
 test\:apps: _ensure-apps-deps dev\:go
 	@echo "🧪 Running apps workspace test matrix..."
@@ -643,3 +672,10 @@ test\:stress\:api-vm-lifecycle-local:
 	BOXLITE_STRESS_P95_MS=$${BOXLITE_STRESS_P95_MS:-60000} \
 	BOXLITE_STRESS_P99_MS=$${BOXLITE_STRESS_P99_MS:-90000} \
 	k6 run --summary-trend-stats 'avg,min,med,p(90),p(95),p(99),max' scripts/test/stress/api-vm-lifecycle.k6.js
+
+PHONY_TARGETS += plugin-boxlite-force
+PLUGIN_PYTHON ?= python3
+plugin-boxlite-force:
+
+test\:unit\:plugins: plugin-boxlite-force
+	@PYTHONDONTWRITEBYTECODE=1 $(PLUGIN_PYTHON) -m unittest discover -s tests/plugins -p 'test_*.py'

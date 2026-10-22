@@ -352,6 +352,36 @@ pub unsafe extern "C" fn boxlite_network_tunnel(
     }
 }
 
+/// Withdraw public access to `port` in the box.
+///
+/// Safe to repeat. Connections already open are not closed. Returns
+/// `InvalidArgument` for a null network pointer or port zero.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn boxlite_network_revoke_tunnel(
+    network: *mut CBoxNetworkHandle,
+    port: u16,
+    out_error: *mut CBoxliteError,
+) -> BoxliteErrorCode {
+    unsafe {
+        if network.is_null() {
+            write_error(out_error, null_pointer_error("network"));
+            return BoxliteErrorCode::InvalidArgument;
+        }
+        let network_ref = &*network;
+        match network_ref
+            .tokio_rt
+            .block_on(network_ref.handle.revoke_tunnel(port))
+        {
+            Ok(()) => BoxliteErrorCode::Ok,
+            Err(error) => {
+                let code = error_to_code(&error);
+                write_error(out_error, error);
+                code
+            }
+        }
+    }
+}
+
 /// Release an unconsumed tunnel. Existing connections and forwarders remain alive.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn boxlite_tunnel_free(tunnel: *mut CBoxTunnelHandle) {
@@ -450,7 +480,7 @@ pub unsafe extern "C" fn boxlite_tunnel_connect(
             }
         };
         let owned_fd = tunnel_ref.tokio_rt.block_on(async {
-            let connection = prepared.connect()?;
+            let connection = prepared.connect().await?;
             // A socket-backed connection already owns exactly the descriptor
             // the caller wants, so surrender it instead of inserting another
             // socket pair and copy task. Only the remote transport, whose

@@ -9,10 +9,12 @@ use async_trait::async_trait;
 
 use crate::litebox::copy::CopyOptions;
 use crate::litebox::snapshot_mgr::SnapshotInfo;
-use crate::litebox::{AttachOptions, BoxCommand, BoxTunnel, Execution, LiteBox};
+use crate::litebox::{
+    AttachOptions, BoxCommand, BoxTunnel, Execution, LiteBox, SshConfig, SshStatus,
+};
 use crate::metrics::{BoxMetrics, RuntimeMetrics};
 use crate::runtime::options::{
-    BoxArchive, BoxOptions, CloneOptions, ExportOptions, NetworkMode, SnapshotOptions,
+    BoxArchive, BoxOptions, CloneOptions, ExportOptions, SnapshotOptions,
 };
 use crate::runtime::types::BoxInfo;
 use boxlite_shared::errors::{BoxliteError, BoxliteResult};
@@ -155,31 +157,40 @@ pub(crate) trait BoxBackend: Send + Sync + Any {
     ) -> BoxliteResult<Vec<LiteBox>>;
 
     async fn export_box(&self, options: ExportOptions, dest: &Path) -> BoxliteResult<BoxArchive>;
+
+    /// Replace the guest's SSH configuration (see [`crate::litebox::SshHandle`]).
+    async fn ssh_configure(&self, config: SshConfig) -> BoxliteResult<SshStatus>;
+
+    /// Read the guest's SSH state without starting the box.
+    async fn ssh_status(&self) -> BoxliteResult<SshStatus>;
+
+    /// Stop the guest's SSH listener without starting the box.
+    async fn ssh_disable(&self) -> BoxliteResult<SshStatus>;
 }
 
 /// Backend abstraction for box network operations.
 ///
 /// Kept separate from `BoxBackend` so lifecycle/exec/file operations do not own
-/// network capabilities directly: the tunnel data plane and the inbound access
-/// policy.
+/// network data-plane capabilities directly.
 #[allow(
     clippy::double_must_use,
     reason = "async_trait generates a must-use boxed future"
 )]
 #[async_trait]
 pub(crate) trait BoxNetworkBackend: Send + Sync {
-    /// Establish a one-shot tunnel to a service port inside the box.
+    /// Prepare a one-shot tunnel to a service port inside the box.
+    ///
+    /// Check here that the box can carry the tunnel and mint any public URI,
+    /// but open no connection: return a [`BoxTunnel::new`] whose future opens
+    /// it on `connect()`, so a port nothing listens on fails there.
     async fn tunnel(&self, target: SocketAddr) -> BoxliteResult<BoxTunnel>;
 
-    /// Make the box's services public (`Enabled`) or private (`Disabled`).
+    /// Withdraw any public access `tunnel()` granted to `port`.
     ///
-    /// For now only REST runtimes implement this. The local runtime keeps
-    /// the `Unsupported` default: it never enforces inbound access, and a
-    /// local box cannot change its options after create.
-    async fn set_inbound(&self, _mode: NetworkMode) -> BoxliteResult<()> {
-        Err(BoxliteError::Unsupported(
-            "changing inbound access is only supported by REST runtimes".into(),
-        ))
+    /// A backend that publishes nothing, like the local one, has nothing to
+    /// withdraw. Connections already open are not closed.
+    async fn revoke_tunnel(&self, _port: u16) -> BoxliteResult<()> {
+        Ok(())
     }
 }
 

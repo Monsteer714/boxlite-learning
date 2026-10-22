@@ -11,8 +11,7 @@ import { Repository } from 'typeorm'
 import { BadRequestError } from '../../exceptions/bad-request.exception'
 import { Tunnel } from '../entities/tunnel.entity'
 
-const TERMINAL_PORT = 22222
-// Same window as the other preview checks (preview:public, preview:token): the proxy
+// Same window as the other preview checks (preview:inbound, preview:access): the proxy
 // asks on every request, and a revoked or unpublished tunnel stays open this long.
 const ACCESS_CACHE_TTL_SECONDS = 3
 
@@ -37,6 +36,20 @@ export class TunnelService {
     await this.redis.del(this.accessCacheKey(boxId, port))
   }
 
+  /**
+   * Withdraw a port's public declaration. Repeating it, or naming a port never
+   * declared, changes nothing. Connections already open are not closed.
+   */
+  async revoke(boxId: string, port: number): Promise<void> {
+    this.assertPort(port)
+    await this.tunnels.query(
+      `UPDATE "tunnel" SET "revoked_at" = now()
+       WHERE "box_id" = $1 AND "port" = $2 AND "access_mode" = 'public' AND "revoked_at" IS NULL`,
+      [boxId, port],
+    )
+    await this.redis.del(this.accessCacheKey(boxId, port))
+  }
+
   async isPublicAccessAllowed(boxId: string, port: number): Promise<boolean> {
     this.assertPort(port)
     const cacheKey = this.accessCacheKey(boxId, port)
@@ -51,7 +64,7 @@ export class TunnelService {
       .andWhere('tunnel.port = :port', { port })
       .andWhere('tunnel.access_mode = :mode', { mode: 'public' })
       .andWhere('tunnel.revoked_at IS NULL')
-      .andWhere('box.public = true')
+      .andWhere('box.inboundEnabled = true')
       .andWhere('box.state NOT IN (:...excluded)', { excluded: ['destroyed', 'destroying', 'archived', 'archiving'] })
       .getExists()
     await this.redis.setex(cacheKey, ACCESS_CACHE_TTL_SECONDS, allowed ? '1' : '0')
@@ -63,7 +76,7 @@ export class TunnelService {
   }
 
   private assertPort(port: number): void {
-    if (!Number.isInteger(port) || port < 1 || port > 65535 || port === TERMINAL_PORT) {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
       throw new BadRequestError('Invalid tunnel port')
     }
   }

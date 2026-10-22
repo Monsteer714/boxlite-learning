@@ -24,8 +24,8 @@ use crate::disk::Disk;
 use crate::event_listener::EventListener;
 #[cfg(target_os = "linux")]
 use crate::fs::BindMountHandle;
-use crate::litebox::BoxTunnel;
 use crate::litebox::copy::{CopyOptions, CopySourceKind};
+use crate::litebox::{BoxConnection, BoxTunnel, SshConfig, SshStatus};
 use crate::lock::LockGuard;
 use crate::metrics::{BoxMetrics, BoxMetricsStorage};
 use crate::net::NetworkBackend;
@@ -1248,7 +1248,11 @@ impl BoxImpl {
         // operations succeed. If any operation fails, the guard's Drop will
         // cleanup the VM process and directory.
         let builder = BoxBuilder::new(Arc::clone(&self.runtime), self.config.clone(), state)?;
-        let (live_state, mut cleanup_guard) = builder.build().await?;
+        let crate::litebox::init::BuiltBox {
+            live: live_state,
+            guard: mut cleanup_guard,
+            resolved_image,
+        } = builder.build().await?;
 
         // The box is up. If we adopted one whose init was already running, that
         // init needs no `Container.Start`; recording it now keeps
@@ -1304,6 +1308,8 @@ impl BoxImpl {
             // clears ExitCode on start too). The guest drops its matching
             // exit file in Container.Init.
             state.exit_code = None;
+
+            state.record_resolved_image(resolved_image);
 
             // Initialize health status if health check is configured
             if self.config.options.advanced.health_check.is_some() {
@@ -1608,6 +1614,18 @@ impl crate::runtime::backend::BoxBackend for BoxImpl {
     ) -> BoxliteResult<crate::runtime::options::BoxArchive> {
         BoxImpl::export_box(self, options, dest).await
     }
+
+    async fn ssh_configure(&self, config: SshConfig) -> BoxliteResult<SshStatus> {
+        BoxImpl::ssh_configure(self, config).await
+    }
+
+    async fn ssh_status(&self) -> BoxliteResult<SshStatus> {
+        BoxImpl::ssh_status(self).await
+    }
+
+    async fn ssh_disable(&self) -> BoxliteResult<SshStatus> {
+        BoxImpl::ssh_disable(self).await
+    }
 }
 
 #[async_trait::async_trait]
@@ -1619,9 +1637,9 @@ impl crate::runtime::backend::BoxNetworkBackend for BoxImpl {
             .network
             .clone()
             .ok_or_else(|| BoxliteError::Unsupported("box networking is disabled".into()))?;
-        Ok(BoxTunnel::local(
-            network.tunnel(target).await?.into_owned_fd()?,
-        ))
+        Ok(BoxTunnel::new(None, async move {
+            BoxConnection::from_fd(network.tunnel(target).await?.into_owned_fd()?)
+        }))
     }
 }
 
@@ -1841,6 +1859,7 @@ mod tests {
         let runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
         let (guest_session, server) = start_stub_guest(gate).await;
@@ -2081,6 +2100,7 @@ mod tests {
         let runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
 
@@ -2252,6 +2272,7 @@ mod tests {
         let mut runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
         Arc::get_mut(&mut runtime)
@@ -2303,6 +2324,7 @@ mod tests {
         let runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
         let requested = PortSpec {
@@ -2388,6 +2410,7 @@ mod tests {
         let runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
 
@@ -2431,6 +2454,7 @@ mod tests {
         let runtime = RuntimeImpl::new_for_test(BoxliteOptions {
             home_dir: temp_dir.path().to_path_buf(),
             image_registries: vec![],
+            ..Default::default()
         })
         .expect("create runtime");
 

@@ -26,7 +26,6 @@ For a quick start, see [`src/cli/README.md`](../../../src/cli/README.md).
   - [`boxlite start`](#boxlite-start)
   - [`boxlite stop`](#boxlite-stop)
   - [`boxlite restart`](#boxlite-restart)
-  - [`boxlite update`](#boxlite-update)
   - [`boxlite pull`](#boxlite-pull)
   - [`boxlite images`](#boxlite-images)
   - [`boxlite inspect`](#boxlite-inspect)
@@ -302,7 +301,11 @@ Scopes:          box:read, box:write, box:exec
 Create a box from an image (or a prepared rootfs via `--rootfs`) and run a
 command, with docker's semantics: `COMMAND` replaces the image's `CMD`, the
 image's `ENTRYPOINT` is prepended, and the result **is** the container's init
-(PID 1). Omit it and the image's own default runs.
+(PID 1).
+
+`--entrypoint EXEC` replaces the image entrypoint and clears its default
+CMD; only an explicit `COMMAND` is appended. Omit both to run the image's defaults.
+See [startup command overrides](../../concepts/images.md#startup-command-overrides).
 
 The box's lifetime is that command's lifetime. When it exits, the box stops and
 takes the command's exit code; `boxlite ps` shows it stopped and
@@ -374,12 +377,13 @@ boxlite exec -e DEBUG=1 -w /app mybox -- pytest tests/
 Create a box without starting it. Prints the new box's ID to stdout.
 
 `COMMAND` is stored, not run — it becomes the box's main command (the container's
-init) when the box is next started, exactly as it would under `run`. Omit it and
-the image's own default is used.
+init) when the box is next started, exactly as it would under `run`.
+`--entrypoint EXEC` uses the same override rules as [`run`](#boxlite-run), including
+clearing the image CMD. Omit both `COMMAND` and `--entrypoint` to use image defaults.
 
-A box created **with** a command is a job: `exec` and `cp` will not start it
-implicitly, because starting it runs that command. Start it deliberately with
-`boxlite start`. A box created **without** one boots the image's default, and
+A box created **with** `COMMAND` or `--entrypoint` is a job: `exec` and `cp` will not
+start it implicitly, because starting it runs that command. Start it deliberately with
+`boxlite start`. A box created **without** either boots the image's default, and
 `exec` still starts it on demand.
 
 **Options:**
@@ -481,36 +485,6 @@ Stop then start one or more boxes. If `stop` fails for a box, that box is skippe
 
 ---
 
-### `boxlite update`
-
-**Synopsis:** `boxlite update BOX --inbound <enabled|disabled>`
-
-Change the inbound mode of an existing remote box, the setting `--inbound`
-picks at create. Prints `BOX` on success.
-
-| Flag | Description |
-|------|-------------|
-| `--inbound <enabled\|disabled>` | Required. `enabled` lets `boxlite network tunnel` reach the box; `disabled` makes it private again. |
-
-```bash
-boxlite --profile app update mybox --inbound enabled
-boxlite --profile app network tunnel mybox 9000 --listen 8080
-```
-
-- `enabled` makes every service the box exposes reachable through the remote
-  proxy without authentication, not only the tunnel you open.
-- `disabled` refuses new tunnel requests at once. The proxy may apply the
-  previous setting to new connections for a while longer, and connections
-  already open stay open.
-- Needs the `write:boxes` permission; without it the CLI prints
-  `auth: forbidden (HTTP 403)`.
-- Local boxes, and servers that do not advertise `inbound_update_enabled` in
-  `GET /v1/config` (such as `boxlite serve`), fail with `unsupported`.
-- `Box was modified by another operation` means the box changed state at the
-  same moment; run the command again.
-
----
-
 ### `boxlite pull`
 
 **Synopsis:** `boxlite pull [OPTIONS] IMAGE`
@@ -565,13 +539,16 @@ The Go-template engine exposes a `json` function for serializing nested values.
 format, or `null` if the start time has not been recorded or is unavailable
 over REST. `State.LastActivityAt` is when the box was last active in RFC 3339
 format — the clock AutoStop measures idleness against — or `null` for a local
-box, which records no activity.
+box, which records no activity. `Network.Outbound` and `Network.Inbound` each
+carry `Mode` (`enabled` or `disabled`) and `AllowNet`; `Network` is `null` when
+the runtime does not know the policy, such as a REST server that predates it.
 
 **Examples:**
 
 ```bash
 boxlite inspect mybox
 boxlite inspect --format '{{.State.Status}}' mybox
+boxlite inspect --format '{{.Network.Inbound.Mode}}' mybox
 boxlite inspect --format '{{.State.StartedAt}}' mybox
 boxlite inspect --format '{{.State.LastActivityAt}}' mybox
 boxlite inspect -l --format yaml
@@ -674,7 +651,7 @@ Display resource usage statistics for a box.
 
 ### `boxlite network tunnel`
 
-**Synopsis:** `boxlite network tunnel BOX GUEST_PORT [--listen ADDRESS]`
+**Synopsis:** `boxlite network tunnel BOX GUEST_PORT [--listen ADDRESS | --revoke]`
 
 Without `--listen`, print the public URL supplied by a remote REST service;
 local boxes have no public URL. With `--listen`, bind a local listener and
@@ -688,13 +665,22 @@ boxlite network tunnel mybox 3000 --listen unix:/tmp/app.sock
 ```
 
 A bare port binds `127.0.0.1`; listener port `0` asks the OS to allocate a
-port. The canonical bound address is printed to stdout before clients are
-accepted. Ctrl-C closes the listener and active connections. TCP hosts must be
-numeric addresses, and Unix socket paths must be absolute.
+port. A client that connects while nothing in the box listens on `GUEST_PORT`
+is disconnected; the listener keeps running. The canonical bound address is
+printed to stdout before clients are accepted.
+Ctrl-C closes the listener and active connections. TCP hosts must be numeric
+addresses, and Unix socket paths must be absolute.
 
-A remote box must be public before it can be tunneled: create it with
-`--inbound enabled`, or make an existing box public with
-[`boxlite update BOX --inbound enabled`](#boxlite-update).
+A remote box needs inbound access enabled before it can be tunneled: create it
+with `--inbound enabled`.
+
+`--revoke` withdraws the port's public URL instead. New requests to it get
+`404` within 3 seconds; connections already open are not closed. It is safe to
+repeat, and running the command again without `--revoke` reopens the same URL:
+
+```bash
+boxlite network tunnel mybox 3000 --revoke
+```
 
 ---
 
@@ -852,7 +838,7 @@ Used by `run` and `create` (defined in `src/cli/src/cli.rs`).
 |------|-------------|
 | `--network <enabled\|disabled>` | Outbound mode; default `enabled`. Disabled mode creates no network interface. |
 | `--allow-net HOST` | Restrict TCP/UDP egress to exact hosts, `*.example.com`, IPs, or CIDRs; repeatable, implies enabled networking, and is incompatible with `--network disabled`. Hostname-only rules deny UDP unless an IP/CIDR is also allowed. |
-| `--inbound <enabled\|disabled>` | Inbound mode; default `disabled` (services exposed by the box are private). Change it later with [`boxlite update`](#boxlite-update). |
+| `--inbound <enabled\|disabled>` | Inbound mode; default `disabled` (services exposed by the box are unreachable from outside). |
 | `--net-tx-kbps KBPS` | Cap what the box sends (guest to internet), in kilobits/sec. `0` or unset leaves it uncapped. |
 | `--net-rx-kbps KBPS` | Cap what reaches the box (internet to guest), in kilobits/sec. `0` or unset leaves it uncapped. |
 
@@ -989,7 +975,7 @@ Defaults:
 
 ## Configuration file
 
-`--config PATH` accepts a JSON file deserialized into `BoxliteOptions`. The primary field is `image_registries`; CLI flags like `--home` and `--registry` are layered on top after loading.
+`--config PATH` accepts a JSON file deserialized into `BoxliteOptions`. The primary field is `image_registries`; `image_registry_proxy` sets a pull proxy (see [Pull proxy](../../guides/image-registry-configuration.md#pull-proxy)). CLI flags like `--home` and `--registry` are layered on top after loading. A profile that targets a remote server ignores this file.
 
 ```json
 {

@@ -22,6 +22,7 @@ RELEASE CHAIN (workflow_run)            build-c ──▶ build-go
                                                 └──▶ build-runner-binary
 
 RELEASE (release event)                 build-runtime · build-c · build-node · build-wheels
+                                        mbuild-release-on-release ──▶ mbuild-release (images, dev)
                                         apps/box-images/v* tag ──▶ release-box-images
 
 LEGACY AWS (manual dispatch)            deploy-infra ─┬─▶ build-apps-api-image
@@ -58,10 +59,11 @@ own.
 | `build-apps-api-image.yml` | dispatch, `workflow_call` | yes | The `apps/api` image: build a commit, build a release, or promote one between stages. Retained legacy AWS path |
 | `deploy-infra.yml` | dispatch | — | Builds and deploys one commit to a stage. Retained legacy AWS path |
 | `deploy-release.yml` | dispatch | — | Deploys already-published artifacts for one `X.Y.Z`. Compiles nothing. Retained legacy AWS path |
-| `e2e-cloud.yml` | dispatch, `workflow_call` | yes | End-to-end against a deployed stage. Run by `deploy-infra` after it applies |
+| `e2e-cloud.yml` | dispatch, `workflow_call` | yes | End-to-end against a deployed stage: the whole suite on `dev`, `-m smoke` on `prod`. Run by `deploy-infra` after it applies, or dispatched with a `stage` |
 | `mdeploy-all.yml` | dispatch | — | Current mdeploy orchestration for prepared GCP/AWS stages. A commit SHA builds for dev, and so does `#<number>` — a pull request, by the commit it would merge to; a release tag publishes into dev or promotes to prod, and is all prod accepts. Applies the stack itself |
 | `mbuild.yml` | `workflow_call` | call-only | The commit line's images, for a dev rollout. Callee only: nobody publishes a commit by hand |
 | `mbuild-release.yml` | dispatch, `workflow_call` | yes | The release line's images, tagged `v<X.Y.Z>-<sha>`: publish a version into dev, or promote it to prod. One job per artifact, and a version the target already holds is refused rather than skipped |
+| `mbuild-release-on-release.yml` | release | — | A stable published release dispatches `mbuild-release` from `main` to publish its application images into dev |
 | `e2e-local.yml` | push, `pull_request_target`, dispatch | — | VM-based tests on a self-hosted EC2 runner. Needs `/dev/kvm`; PRs need the `e2e-local` label |
 | `build-box-images.yml` | PR, push, dispatch | — | Builds changed flavors for both arches; shared inputs and manual runs build every flavor |
 | `release-box-images.yml` | `apps/box-images/v*` tag, dispatch | — | The only workflow that writes to GHCR |
@@ -97,6 +99,10 @@ and bypass change filters. Combined Rust and CLI coverage runs on all three plat
 non-VM integration tests and Linux guest tests. Codecov requires 90% coverage of changed lines
 and reports total coverage.
 
+`make coverage:bindings:external` runs `make test:unit:scripts` before collecting
+native SDK profiles. A relative `CARGO_TARGET_DIR` is resolved from the repository
+root once, so Python and Node builds share the report's object directory.
+
 Linux x64 also runs the native KVM hardware tests and adds their profiles before
 the Rust coverage upload. Missing `/dev/kvm` access fails this qualification.
 
@@ -114,6 +120,19 @@ checks the changed files before publishing a passing or failing status; the
 workflow never forces a pass. Failed file detection cannot select this path,
 and upload errors fail `Test (conclusion)`. Source changes still need reports
 and 90% patch coverage; missing reports fail the patch status.
+
+Plugin resources, `scripts/plugins`, `tests/plugins`, and their Make/CI inputs select
+the lightweight `Plugin package coverage` job, including on drafts. It measures
+package tests and real check/dist commands through `make plugin:boxlite:coverage`,
+saves the Cobertura XML as the `plugin-coverage` artifact, and uploads it with OIDC
+under the `plugins` carryforward flag. Selected plugin source cannot take the
+empty-upload path; package or upload failures block `Test (conclusion)`.
+
+The package validator requires onboarding to name a distributed, frontmatter-validated
+`skills/<name>/SKILL.md` inventory. Excluded caches and shipped reference files cannot
+serve as onboarding skills, even when both manifests name the same existing file or alias.
+Each onboarding regression restores original manifest bytes and removes its invalid resource
+before the next case, so leftover invalid state cannot mask a later failure.
 
 After verifying normal uploads and the skipped-coverage path on PRs and merge
 groups, require `codecov/patch` from the Codecov app in the main ruleset alongside

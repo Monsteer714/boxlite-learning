@@ -29,6 +29,7 @@ export type { SocketAddress } from "./native-contracts.js";
 type BoxLike = Omit<JsBox, "network"> & {
   readonly network: {
     tunnel(port: number): Promise<NativeBoxTunnel>;
+    revokeTunnel(port: number): Promise<void>;
   };
 };
 
@@ -130,7 +131,7 @@ export interface OutboundNetworkSpec {
 }
 
 export interface InboundNetworkSpec {
-  /** Inbound mode: "enabled" (publicly reachable) or "disabled" (private). */
+  /** Inbound mode: "enabled" (reachable without sign-in) or "disabled" (unreachable from outside). */
   mode: "enabled" | "disabled";
   /**
    * Not supported yet: a non-empty value is rejected. Exists for shape
@@ -373,13 +374,22 @@ export class NetworkHandle {
   /** @internal */
   constructor(private readonly ensureBox: () => Promise<BoxLike>) {}
 
-  /** Establish and return a one-shot tunnel for a port inside this box. */
+  /** Prepare a one-shot tunnel for a port inside this box. */
   async tunnel(port: number): Promise<BoxTunnel> {
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
       throw new RangeError("port must be an integer between 1 and 65535");
     }
     const box = await this.ensureBox();
     return new BoxTunnel(await box.network.tunnel(port));
+  }
+
+  /** Withdraw public access to a port; open connections are not closed. */
+  async revokeTunnel(port: number): Promise<void> {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new RangeError("port must be an integer between 1 and 65535");
+    }
+    const box = await this.ensureBox();
+    await box.network.revokeTunnel(port);
   }
 }
 
@@ -860,7 +870,7 @@ export class SimpleBox {
     return box.metrics();
   }
 
-  /** Establish and return a one-shot tunnel to a port inside this box. */
+  /** Prepare a one-shot tunnel to a port inside this box. */
   async tunnel(port: number): Promise<BoxTunnel> {
     return this.network.tunnel(port);
   }

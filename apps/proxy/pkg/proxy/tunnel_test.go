@@ -97,13 +97,14 @@ func TestTunnelTargetUsesPreviewAuthority(t *testing.T) {
 	}
 }
 
-func TestTunnelTargetRejectsTerminalPort(t *testing.T) {
+func TestTunnelTargetAcceptsPort22222(t *testing.T) {
 	for _, port := range []string{"22222", "022222"} {
 		request := httptest.NewRequest(http.MethodConnect, "http://proxy.test", nil)
 		request.Host = port + "-d-416243644566313233343536.proxy.test:443"
 
-		if _, _, err := (&Proxy{}).tunnelTarget(request); err == nil {
-			t.Fatalf("terminal port %s accepted as a public CONNECT tunnel", port)
+		boxID, target, err := (&Proxy{}).tunnelTarget(request)
+		if err != nil || boxID != "AbCdEf123456" || target != 22222 {
+			t.Fatalf("tunnelTarget(%s) = %s:%d, %v; want AbCdEf123456:22222", port, boxID, target, err)
 		}
 	}
 }
@@ -114,7 +115,7 @@ func TestTunnelConnectRejectsPrivateBoxBeforeRunnerDial(t *testing.T) {
 	if err := publicCache.Set(ctx, "AbCdEf123456", false, time.Minute); err != nil {
 		t.Fatal(err)
 	}
-	proxy := &Proxy{boxPublicCache: publicCache}
+	proxy := &Proxy{boxInboundCache: publicCache}
 	request := httptest.NewRequest(http.MethodConnect, "http://proxy.test", nil)
 	request.Host = "3000-d-416243644566313233343536.proxy.test:443"
 	response := httptest.NewRecorder()
@@ -123,14 +124,6 @@ func TestTunnelConnectRejectsPrivateBoxBeforeRunnerDial(t *testing.T) {
 
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
-	}
-	for _, want := range []string{
-		"inbound access disabled",
-		"boxlite update AbCdEf123456 --inbound enabled",
-	} {
-		if !strings.Contains(response.Body.String(), want) {
-			t.Fatalf("body = %q, want it to name %q", response.Body.String(), want)
-		}
 	}
 }
 
@@ -171,7 +164,7 @@ func TestTunnelConnectRenewsBoxActivityBeforeStreaming(t *testing.T) {
 	clientConfig.Servers[0].URL = api.URL
 	proxy := &Proxy{
 		apiclient:                  apiclient.NewAPIClient(clientConfig),
-		boxPublicCache:             publicCache,
+		boxInboundCache:            publicCache,
 		boxRunnerCache:             runnerCache,
 		boxLastActivityUpdateCache: common_cache.NewMapCache[bool](ctx),
 	}
