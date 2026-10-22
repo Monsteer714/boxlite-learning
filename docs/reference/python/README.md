@@ -316,7 +316,8 @@ opts = BoxOptions(
 in a dict fails when the options are built. The local runtime takes `"bind"`
 mounts and a REST runtime `"volume"` mounts; each refuses the other type at
 create (see the [MountSpec reference](../rust/README.md#mountspec)). Unlike a managed mount in
-`volumes`, a `"volume"` mount may be read-only. The rest is
+`volumes`, a `"volume"` mount may be read-only. `mounts` is the last `BoxOptions` parameter, so a positional call written
+before it existed still means what it did. The rest is
 checked when the box is created: a missing `source`, a relative `target`,
 `sub_path` on a `"bind"`, or an empty `sub_path` (omit it to mount the whole
 volume).

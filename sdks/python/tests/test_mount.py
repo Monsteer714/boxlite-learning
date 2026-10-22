@@ -98,3 +98,23 @@ class TestBoxOptionsMounts:
     def test_refuses_an_entry_that_is_neither_mount_nor_dict(self):
         with pytest.raises(RuntimeError, match="Mount or dict"):
             boxlite.BoxOptions(mounts=[("run42", "/workspace")])
+
+    def test_positional_calls_written_before_mounts_keep_their_meaning(self):
+        """`mounts` is the last parameter, so every earlier one keeps its slot."""
+        opts = boxlite.BoxOptions(
+            "alpine:latest",  # image
+            None,  # rootfs_path
+            2,  # cpus
+            512,  # memory_mib
+            None,  # disk_size_gb
+            "/app",  # working_dir
+            [],  # env
+            [],  # volumes
+            None,  # network
+            [],  # ports
+            True,  # auto_remove
+            300,  # auto_stop
+        )
+
+        assert opts.auto_remove is True
+        assert opts.auto_stop == 300

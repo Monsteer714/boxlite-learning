@@ -598,7 +598,6 @@ impl PyBoxOptions {
         working_dir=None,
         env=vec![],
         volumes=vec![],
-        mounts=vec![],
         network=None,
         ports=vec![],
         auto_remove=None,
@@ -612,6 +611,9 @@ impl PyBoxOptions {
         tty=None,
         advanced=None,
         secrets=vec![],
+        // Last, so a positional call written before `mounts` existed keeps
+        // every argument in its slot.
+        mounts=vec![],
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -623,7 +625,6 @@ impl PyBoxOptions {
         working_dir: Option<String>,
         env: Vec<(String, String)>,
         volumes: Vec<PyVolumeSpec>,
-        mounts: Vec<PyMountSpec>,
         network: Option<PyNetworkSpec>,
         ports: Vec<PyPortSpec>,
         auto_remove: Option<bool>,
@@ -637,6 +638,7 @@ impl PyBoxOptions {
         tty: Option<bool>,
         advanced: Option<PyAdvancedBoxOptions>,
         secrets: Vec<PySecret>,
+        mounts: Vec<PyMountSpec>,
     ) -> Self {
         Self {
             image,
