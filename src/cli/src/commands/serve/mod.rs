@@ -1141,9 +1141,13 @@ fn volume_info_to_response(info: &boxlite::runtime::types::VolumeInfo) -> types:
     }
 }
 
+/// Turn a create request into box options. `volumes` are the request's mounts
+/// already resolved against the server's policy (`HostPathPolicy::resolve`);
+/// taking them as a parameter keeps this a pure conversion that no caller can
+/// reach without deciding what the server allows.
 fn build_box_options(
     req: &CreateBoxRequest,
-    host_paths: &HostPathPolicy,
+    volumes: Vec<boxlite::runtime::options::VolumeSpec>,
 ) -> Result<BoxOptions, boxlite::BoxliteError> {
     let rootfs = if let Some(ref path) = req.rootfs_path {
         RootfsSpec::RootfsPath(path.clone())
@@ -1207,8 +1211,6 @@ fn build_box_options(
     // the default-flip (jailer + seccomp on for Linux/macOS) applies
     // uniformly. Operators who want a different policy run the
     // server with a different default; clients cannot relax it.
-
-    let volumes = host_paths.resolve(req.volumes.as_deref().unwrap_or_default())?;
 
     // An empty name or value can never substitute anything. Reject at the
     // boundary so this server agrees with the Cloud API's IsNotEmpty and the
@@ -2142,18 +2144,14 @@ mod tests {
             serde_json::from_str(r#"{"image": "alpine:latest", "tty": true}"#)
                 .expect("body with tty must deserialize");
         assert!(
-            build_box_options(&with_tty, &HostPathPolicy::default())
-                .expect("build")
-                .tty,
+            build_box_options(&with_tty, Vec::new()).expect("build").tty,
             "a REST client asking for a terminal must get one"
         );
 
         let without: super::types::CreateBoxRequest =
             serde_json::from_str(r#"{"image": "alpine:latest"}"#).expect("body must deserialize");
         assert!(
-            !build_box_options(&without, &HostPathPolicy::default())
-                .expect("build")
-                .tty,
+            !build_box_options(&without, Vec::new()).expect("build").tty,
             "no tty asked for, none granted"
         );
     }
@@ -2165,7 +2163,7 @@ mod tests {
         )
         .expect("body with secrets must deserialize");
 
-        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build with secrets");
+        let opts = build_box_options(&req, Vec::new()).expect("build with secrets");
         assert_eq!(opts.secrets.len(), 1, "one secret in, one secret out");
         let secret = &opts.secrets[0];
         assert_eq!(secret.name, "openai");
@@ -2183,7 +2181,7 @@ mod tests {
         )
         .expect("body with explicit placeholder must deserialize");
 
-        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
+        let opts = build_box_options(&req, Vec::new()).expect("build");
         assert_eq!(
             opts.secrets[0].placeholder, "<MY_TOKEN>",
             "caller placeholder wins"
@@ -2197,7 +2195,7 @@ mod tests {
         )
         .expect("body with empty placeholder must deserialize");
 
-        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
+        let opts = build_box_options(&req, Vec::new()).expect("build");
         assert_eq!(
             opts.secrets[0].placeholder, "<BOXLITE_SECRET:openai>",
             "an empty placeholder is as absent as an omitted one"
@@ -2215,7 +2213,7 @@ mod tests {
             ))
             .expect("body with secrets must deserialize");
 
-            let err = build_box_options(&req, &HostPathPolicy::default())
+            let err = build_box_options(&req, Vec::new())
                 .expect_err("empty secret fields must be rejected");
             assert!(
                 matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("non-empty")),
@@ -2241,8 +2239,11 @@ mod tests {
         });
         let req: super::types::CreateBoxRequest = serde_json::from_value(body).unwrap();
         let host_paths = HostPathPolicy::from_roots(&[root.path().to_path_buf()]).unwrap();
+        let volumes = host_paths
+            .resolve(req.volumes.as_deref().unwrap_or_default())
+            .expect("a host path under a root binds");
 
-        let opts = build_box_options(&req, &host_paths).expect("a host path under a root binds");
+        let opts = build_box_options(&req, volumes).expect("build");
 
         assert_eq!(opts.volumes.len(), 1);
         assert_eq!(
@@ -2260,8 +2261,7 @@ mod tests {
         )
         .expect("capability request must deserialize");
 
-        let opts =
-            build_box_options(&req, &HostPathPolicy::default()).expect("build capability options");
+        let opts = build_box_options(&req, Vec::new()).expect("build capability options");
         let capabilities = opts.advanced.capabilities().expect("capabilities set");
         assert_eq!(capabilities.add, vec!["SYS_ADMIN"]);
         assert_eq!(capabilities.drop, vec!["CAP_NET_RAW"]);
@@ -2277,8 +2277,7 @@ mod tests {
             serde_json::from_str(r#"{"image":"alpine:latest"}"#)
                 .expect("ordinary request must deserialize");
 
-        let opts =
-            build_box_options(&req, &HostPathPolicy::default()).expect("build ordinary options");
+        let opts = build_box_options(&req, Vec::new()).expect("build ordinary options");
         assert!(
             opts.advanced.capabilities().is_none(),
             "omitting capabilities on the wire must not become an explicit empty policy"
@@ -2291,8 +2290,7 @@ mod tests {
             r#"{"auto_stop": 900, "auto_delete": 3600, "auto_resume": false}"#,
         )
         .expect("lifecycle body must deserialize");
-        let opts =
-            build_box_options(&req, &HostPathPolicy::default()).expect("build lifecycle options");
+        let opts = build_box_options(&req, Vec::new()).expect("build lifecycle options");
         assert_eq!(
             opts.auto_stop, None,
             "the local runtime refuses a non-zero auto_stop outright, so \
@@ -2313,7 +2311,7 @@ mod tests {
         let persistent: super::types::CreateBoxRequest =
             serde_json::from_str(r#"{"auto_delete": 0}"#).expect("body must deserialize");
         assert!(
-            build_box_options(&persistent, &HostPathPolicy::default())
+            build_box_options(&persistent, Vec::new())
                 .expect("build")
                 .detach,
             "persistent boxes keep the serve API's historical detached default"
@@ -2896,7 +2894,7 @@ mod tests {
             };
             let req: super::types::CreateBoxRequest =
                 serde_json::from_str(&body).expect("body must deserialize");
-            let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
+            let opts = build_box_options(&req, Vec::new()).expect("build");
             assert!(
                 matches!(opts.inbound_network, NetworkSpec::Disabled),
                 "network {network:?} must default inbound to disabled"
@@ -2921,7 +2919,7 @@ mod tests {
             }"#,
         )
         .expect("nested network body must deserialize");
-        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build");
+        let opts = build_box_options(&req, Vec::new()).expect("build");
         match opts.network {
             NetworkSpec::Enabled { allow_net } => {
                 assert_eq!(allow_net, vec!["api.openai.com"]);
@@ -2946,8 +2944,7 @@ mod tests {
             }"#,
         )
         .expect("mixed network body still deserializes for compatibility validation");
-        let err = build_box_options(&req, &HostPathPolicy::default())
-            .expect_err("mixed network body must fail");
+        let err = build_box_options(&req, Vec::new()).expect_err("mixed network body must fail");
         assert!(
             matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("either nested")),
             "unexpected error: {err}"
@@ -2968,8 +2965,7 @@ mod tests {
             }"#,
         )
         .expect("mixed network body still deserializes for compatibility validation");
-        let err = build_box_options(&req, &HostPathPolicy::default())
-            .expect_err("mixed network body must fail");
+        let err = build_box_options(&req, Vec::new()).expect_err("mixed network body must fail");
         assert!(
             matches!(err, boxlite::BoxliteError::InvalidArgument(ref msg) if msg.contains("either nested")),
             "unexpected error: {err}"
@@ -2984,7 +2980,7 @@ mod tests {
         let json = r#"{"image": "alpine:latest"}"#;
         let req: super::types::CreateBoxRequest =
             serde_json::from_str(json).expect("body must deserialize");
-        let opts = build_box_options(&req, &HostPathPolicy::default()).expect("build_box_options");
+        let opts = build_box_options(&req, Vec::new()).expect("build_box_options");
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         assert!(
             opts.advanced.security.jailer_enabled,
@@ -3185,6 +3181,51 @@ mod tests {
             "volume mounts",
         )
         .await;
+    }
+
+    /// The create handler is where host paths are checked: without a
+    /// `--host-path-root` a bind is refused before any box exists.
+    #[tokio::test]
+    async fn create_box_refuses_a_host_path_without_a_root_before_provisioning() {
+        let home = tempfile::tempdir().expect("runtime home");
+        let runtime = BoxliteRuntime::new_for_test(boxlite::BoxliteOptions {
+            home_dir: home.path().join("boxlite"),
+            ..Default::default()
+        })
+        .expect("local runtime");
+        let state = Arc::new(AppState {
+            runtime: runtime.clone(),
+            boxes: RwLock::new(HashMap::new()),
+            executions: RwLock::new(HashMap::new()),
+            api_key: None,
+            host_paths: Default::default(),
+            lifecycle: RwLock::new(HashMap::new()),
+            last_activity: RwLock::new(HashMap::new()),
+        });
+        let req: types::CreateBoxRequest = serde_json::from_value(serde_json::json!({
+            "image": "alpine:latest",
+            "volumes": [{"host_path": home.path(), "guest_path": "/workspace"}],
+        }))
+        .expect("request");
+
+        let response = handlers::boxes::create_box(State(state), axum::Json(req)).await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        let error: serde_json::Value = serde_json::from_slice(&body).expect("JSON response");
+        assert!(
+            error["error"]["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("--host-path-root")),
+            "{error}"
+        );
+        assert!(
+            runtime.list_info().await.expect("list boxes").is_empty(),
+            "a refused host path must not provision a box"
+        );
+        runtime.shutdown(Some(1)).await.expect("shutdown runtime");
     }
 
     /// Build an `ActiveExecution` backed by a stub `Execution` whose
