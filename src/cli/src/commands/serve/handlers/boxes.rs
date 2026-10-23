@@ -51,8 +51,8 @@ pub(in crate::commands::serve) async fn create_box(
         }
     };
 
-    let options = match build_box_options(&req, volumes) {
-        Ok(options) => options,
+    let options = match build_box_options(&req) {
+        Ok(options) => boxlite::BoxOptions { volumes, ..options },
         Err(e) => {
             return error_response(
                 StatusCode::BAD_REQUEST,
